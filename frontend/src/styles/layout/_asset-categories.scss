@@ -1,0 +1,214 @@
+.af-category-table-responsive {
+  width: 100%;
+}
+
+.af-category-table {
+  width: 100%;
+
+  th,
+  td {
+    vertical-align: middle;
+  }
+
+  td {
+    overflow-wrap: anywhere;
+  }
+
+  .af-category-description-preview {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    white-space: normal;
+    line-height: 1.5;
+  }
+
+  .af-category-description-more {
+    margin-top: 0.35rem;
+
+    summary {
+      color: var(--bs-primary);
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    p {
+      color: var(--bs-secondary-color);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+  }
+}
+
+@media (min-width: 1200px) {
+  .af-category-table {
+    table-layout: fixed;
+    min-width: 860px;
+
+    th:nth-child(1),
+    td:nth-child(1) {
+      width: 9%;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      width: 13%;
+    }
+
+    th:nth-child(3),
+    td:nth-child(3) {
+      width: 18%;
+    }
+
+    th:nth-child(4),
+    td:nth-child(4) {
+      width: 35%;
+    }
+
+    th:nth-child(5),
+    td:nth-child(5) {
+      width: 11%;
+    }
+
+    th:nth-child(6),
+    td:nth-child(6) {
+      width: 14%;
+    }
+  }
+}
+
+@media (max-width: 1199.98px) {
+  .af-category-table-responsive {
+    overflow: visible;
+  }
+
+  .af-category-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin-bottom: 0;
+    border: 0;
+
+    > thead {
+      display: none;
+    }
+
+    > tbody {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 300px), 1fr)
+      );
+      gap: 1rem;
+    }
+
+    > tbody > tr {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr);
+      column-gap: 0.75rem;
+      row-gap: 0.3rem;
+      min-width: 0;
+      padding: 1rem;
+      border: 1px solid var(--bs-border-color);
+      border-radius: 0.6rem;
+      background: var(--bs-body-bg);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+
+    > tbody > tr > td {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      padding: 0.2rem 0;
+      border: 0;
+      background: transparent;
+      text-align: left !important;
+      white-space: normal !important;
+      overflow-wrap: anywhere;
+    }
+
+    > tbody > tr > td:nth-child(1) {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      align-self: center;
+
+      img {
+        max-width: 100%;
+        border-radius: 0.4rem;
+      }
+    }
+
+    > tbody > tr > td:nth-child(2) {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: end;
+      font-size: 0.75rem;
+      color: var(--bs-secondary-color);
+    }
+
+    > tbody > tr > td:nth-child(3) {
+      grid-column: 2;
+      grid-row: 2;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    > tbody > tr > td:nth-child(4) {
+      grid-column: 1 / -1;
+      margin-top: 0.55rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--bs-border-color);
+      font-size: 0.85rem;
+    }
+
+    > tbody > tr > td:nth-child(4)::before {
+      content: "DESKRIPSI";
+      display: block;
+      margin-bottom: 0.3rem;
+      color: var(--bs-secondary-color);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    > tbody > tr > td:nth-child(5) {
+      grid-column: 1;
+      grid-row: 4;
+      align-self: center;
+    }
+
+    > tbody > tr > td:nth-child(6) {
+      grid-column: 2;
+      grid-row: 4;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.25rem;
+      white-space: nowrap !important;
+    }
+
+    > tbody > tr > td:nth-child(6) .btn {
+      margin-right: 0 !important;
+      flex-shrink: 0;
+    }
+
+    > tbody > tr > td[colspan] {
+      grid-column: 1 / -1;
+      display: block;
+      text-align: center !important;
+    }
+  }
+}
+
+@media (max-width: 400px) {
+  .af-category-table > tbody > tr {
+    padding: 0.75rem;
+    column-gap: 0.55rem;
+  }
+
+  .af-category-table > tbody > tr > td:nth-child(3) {
+    font-size: 0.9rem;
+  }
+}

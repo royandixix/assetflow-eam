@@ -1,0 +1,72 @@
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.p12
+*.pfx
+*.key
+
+# Next.js and Node.js
+node_modules/
+.next/
+.turbo/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Go
+bin/
+*.exe
+*.test
+*.out
+
+# Local files
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# Local database and backups
+*.dump
+*.backup
+*.sqlite
+*.sqlite3
+*.db
+*.zip
+*.tar.gz
+
+# Local Supabase state
+supabase/.temp/
+supabase/.branches/
+
+# Local uploads
+uploads/
+
+# Local configuration - review examples before publication
+.env*
+
+# Compiled Go application
+/backend/api
+/backend/bin/
+
+# Local backups
+.crud-backups/
+frontend/.layout-backup/
+*.backup-*
+*.bak
+*.bak-*
+*.broken.bak
+
+# Local audit results
+assetflow_frontend_audit.txt
+
+# Supabase local state
+supabase/.temp/
+supabase/.branches/
+
+# macOS
+.DS_Store

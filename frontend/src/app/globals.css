@@ -1,0 +1,194 @@
+
+:root {
+  --af-primary: #315cf5;
+  --af-navy: #12213b;
+  --af-background: #f4f7fb;
+  --af-muted: #758299;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--af-background);
+}
+
+.af-brand {
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.af-landing {
+  min-height: 100vh;
+  background: linear-gradient(140deg, #ffffff 30%, #eaf0ff);
+}
+
+.af-navbar {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #e5eaf3;
+}
+
+.af-hero {
+  padding: 110px 0 100px;
+}
+
+.af-hero h1 {
+  max-width: 760px;
+  font-size: clamp(36px, 5vw, 66px);
+  font-weight: 800;
+  letter-spacing: -1.8px;
+  line-height: 1.13;
+}
+
+.af-hero h1 span {
+  color: var(--af-primary);
+}
+
+.af-hero p {
+  max-width: 640px;
+  color: var(--af-muted);
+  font-size: 17px;
+  line-height: 1.9;
+}
+
+.af-preview {
+  padding: 30px;
+  border: 1px solid #e0e7f2;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 28px 70px rgba(25, 48, 97, 0.12);
+}
+
+.af-preview-main {
+  padding: 60px 25px;
+  text-align: center;
+  border-radius: 15px;
+  background: #edf2ff;
+  color: var(--af-primary);
+}
+
+.af-feature {
+  height: 100%;
+  border: 1px solid #e6ebf3;
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+}
+
+.af-feature h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.af-feature p {
+  color: var(--af-muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.af-auth {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  background: white;
+}
+
+.af-auth-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 45px;
+  color: white;
+  background: linear-gradient(140deg, #132345, #315cf5);
+}
+
+.af-auth-panel h1 {
+  font-size: clamp(35px, 4vw, 58px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+}
+
+.af-auth-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 25px;
+}
+
+.af-auth-form {
+  width: 100%;
+  max-width: 420px;
+}
+
+.af-auth-form h2 {
+  font-weight: 800;
+}
+
+.af-auth-form .form-control {
+  min-height: 50px;
+}
+
+.af-auth-form .btn-primary {
+  min-height: 50px;
+}
+
+.af-dashboard-card {
+  height: 100%;
+  border: 1px solid #e7ebf3;
+}
+
+.af-dashboard-card .card-body {
+  padding: 24px;
+}
+
+.af-role-badge {
+  letter-spacing: 0.4px;
+  font-weight: 700;
+}
+
+.af-avatar {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #315cf5;
+  color: white;
+  font-weight: 800;
+}
+
+.af-sidebar-module {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  color: var(--cui-sidebar-nav-link-color, #aab9d0);
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.af-sidebar-module small {
+  margin-left: auto;
+  font-size: 10px;
+}
+
+@media (max-width: 991px) {
+  .af-auth {
+    display: block;
+  }
+
+  .af-auth-panel {
+    display: none;
+  }
+
+  .af-auth-content {
+    min-height: 100vh;
+  }
+
+  .af-hero {
+    padding: 65px 0;
+  }
+}
