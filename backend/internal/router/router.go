@@ -19,6 +19,7 @@ import (
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/maintenance"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/transfers"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/users"
+	"github.com/royandixix/assetflow-eam/backend/internal/modules/vendors"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/workorders"
 )
 
