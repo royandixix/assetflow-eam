@@ -83,6 +83,7 @@ func New(db *pgxpool.Pool, authClient *auth.Client) *gin.Engine {
 	maintenance.RegisterRoutes(protected, db)
 	workorders.RegisterRoutes(protected, db)
 	users.RegisterRoutes(protected, db)
+	vendors.RegisterRoutes(protected, db)
 
 	protected.GET("/auth/me", func(c *gin.Context) {
 		identity, _ := middleware.CurrentIdentity(c)

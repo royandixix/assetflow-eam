@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   Alert,
   Badge,
@@ -55,7 +55,11 @@ type VendorList = {
   can_manage: boolean;
 };
 
-const emptyForm: VendorForm = {
+type ApiMessage = {
+  message?: string;
+};
+
+const initialForm: VendorForm = {
   name: "",
   category: "SERVICE",
   contact_person: "",
@@ -68,36 +72,63 @@ const emptyForm: VendorForm = {
 
 const categoryNames: Record<string, string> = {
   SUPPLIER: "Pemasok",
-  SERVICE: "Jasa / Servis",
+  SERVICE: "Penyedia Jasa",
   BOTH: "Pemasok & Jasa",
 };
 
-async function vendorApi<T>(path: string, options?: RequestInit): Promise<T> {
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Terjadi kesalahan pada aplikasi";
+}
+
+async function vendorApi<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const response = await fetch(`/api/vendors${path}`, {
     ...options,
     cache: "no-store",
     headers: {
-      ...(options?.body ? { "Content-Type": "application/json" } : {}),
-      ...options?.headers,
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
     },
   });
 
-  const result = await response.json().catch(() => null);
+  const result: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(result?.message || `Permintaan gagal (${response.status})`);
+    let message = `Permintaan gagal (${response.status})`;
+
+    if (result !== null && typeof result === "object" && "message" in result) {
+      const apiMessage = result as ApiMessage;
+
+      if (typeof apiMessage.message === "string") {
+        message = apiMessage.message;
+      }
+    }
+
+    throw new Error(message);
   }
 
   return result as T;
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : "Terjadi kesalahan pada sistem";
+function formatDate(value: string): string {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function blurFocus() {
+function releaseFocus() {
   if (
     typeof document !== "undefined" &&
     document.activeElement instanceof HTMLElement
@@ -106,16 +137,9 @@ function blurFocus() {
   }
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 export default function VendorManager() {
   const [items, setItems] = useState<Vendor[]>([]);
+
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -130,6 +154,7 @@ export default function VendorManager() {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [loading, setLoading] = useState(true);
@@ -143,46 +168,62 @@ export default function VendorManager() {
   const [editing, setEditing] = useState<Vendor | null>(null);
   const [detail, setDetail] = useState<Vendor | null>(null);
 
-  const [form, setForm] = useState<VendorForm>(emptyForm);
+  const [form, setForm] = useState<VendorForm>({
+    ...initialForm,
+  });
 
   const totalPages = Math.max(1, Math.ceil(total / 10));
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    const controller = new AbortController();
 
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        q: query,
-        status: statusFilter,
+    const params = new URLSearchParams({
+      page: String(page),
+      q: query,
+      status: statusFilter,
+    });
+
+    vendorApi<VendorList>(`?${params.toString()}`, {
+      signal: controller.signal,
+    })
+      .then((result) => {
+        if (controller.signal.aborted) return;
+
+        setItems(result.data ?? []);
+        setTotal(result.pagination?.total ?? 0);
+
+        setSummary(
+          result.summary ?? {
+            total: 0,
+            active: 0,
+            inactive: 0,
+          },
+        );
+
+        setCanManage(result.can_manage ?? false);
+        setError("");
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+
+        setError(getErrorMessage(err));
+        setItems([]);
+        setTotal(0);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
 
-      const result = await vendorApi<VendorList>(`?${params.toString()}`);
-
-      setItems(result.data ?? []);
-      setTotal(result.pagination?.total ?? 0);
-      setSummary(
-        result.summary ?? {
-          total: 0,
-          active: 0,
-          inactive: 0,
-        },
-      );
-      setCanManage(result.can_manage ?? false);
-      setError("");
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [page, query, statusFilter]);
-
-  useEffect(() => {
-    void load();
-  }, [load, refreshKey]);
+    return () => {
+      controller.abort();
+    };
+  }, [page, query, statusFilter, refreshKey]);
 
   function reload() {
-    setRefreshKey((value) => value + 1);
+    setLoading(true);
+    setRefreshKey((current) => current + 1);
   }
 
   function updateField<K extends keyof VendorForm>(
@@ -195,38 +236,30 @@ export default function VendorManager() {
     }));
   }
 
-  function closeForm() {
-    if (saving) return;
-
-    blurFocus();
-    setShowForm(false);
-    setEditing(null);
-    setDialogError("");
-  }
-
   function openCreate() {
-    blurFocus();
+    releaseFocus();
 
-    setForm({ ...emptyForm });
     setEditing(null);
+    setForm({ ...initialForm });
     setDialogError("");
     setNotice("");
     setShowForm(true);
   }
 
-  function openEdit(item: Vendor) {
-    blurFocus();
+  function openEdit(vendor: Vendor) {
+    releaseFocus();
 
-    setEditing(item);
+    setEditing(vendor);
+
     setForm({
-      name: item.name,
-      category: item.category,
-      contact_person: item.contact_person,
-      phone: item.phone,
-      email: item.email,
-      address: item.address,
-      notes: item.notes,
-      is_active: item.is_active,
+      name: vendor.name,
+      category: vendor.category,
+      contact_person: vendor.contact_person,
+      phone: vendor.phone,
+      email: vendor.email,
+      address: vendor.address,
+      notes: vendor.notes,
+      is_active: vendor.is_active,
     });
 
     setDialogError("");
@@ -234,8 +267,19 @@ export default function VendorManager() {
     setShowForm(true);
   }
 
-  async function saveVendor(event: React.FormEvent<HTMLFormElement>) {
+  function closeForm() {
+    if (saving) return;
+
+    releaseFocus();
+    setShowForm(false);
+    setEditing(null);
+    setDialogError("");
+  }
+
+  async function saveVendor(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (saving) return;
 
     if (form.name.trim().length < 3) {
       setDialogError("Nama Vendor minimal 3 karakter");
@@ -246,20 +290,23 @@ export default function VendorManager() {
     setDialogError("");
 
     try {
+      const payload: VendorForm = {
+        ...form,
+        name: form.name.trim(),
+        contact_person: form.contact_person.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        address: form.address.trim(),
+        notes: form.notes.trim(),
+      };
+
       await vendorApi(editing ? `/${editing.id}` : "", {
         method: editing ? "PUT" : "POST",
-        body: JSON.stringify({
-          ...form,
-          name: form.name.trim(),
-          contact_person: form.contact_person.trim(),
-          phone: form.phone.trim(),
-          email: form.email.trim(),
-          address: form.address.trim(),
-          notes: form.notes.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
 
-      blurFocus();
+      releaseFocus();
+
       setShowForm(false);
       setEditing(null);
 
@@ -272,29 +319,29 @@ export default function VendorManager() {
       setPage(1);
       reload();
     } catch (err) {
-      setDialogError(errorMessage(err));
+      setDialogError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
   }
 
-  function renderStatus(item: Vendor) {
+  function vendorStatus(vendor: Vendor) {
     return (
-      <Badge bg={item.is_active ? "success" : "secondary"}>
-        {item.is_active ? "Aktif" : "Nonaktif"}
+      <Badge bg={vendor.is_active ? "success" : "secondary"}>
+        {vendor.is_active ? "Aktif" : "Nonaktif"}
       </Badge>
     );
   }
 
-  function actions(item: Vendor) {
+  function vendorActions(vendor: Vendor) {
     return (
-      <div className="d-flex gap-2 flex-wrap">
+      <div className="d-flex flex-wrap gap-2">
         <Button
           size="sm"
           variant="outline-secondary"
           onClick={() => {
-            blurFocus();
-            setDetail(item);
+            releaseFocus();
+            setDetail(vendor);
           }}
         >
           Detail
@@ -304,7 +351,7 @@ export default function VendorManager() {
           <Button
             size="sm"
             variant="outline-primary"
-            onClick={() => openEdit(item)}
+            onClick={() => openEdit(vendor)}
           >
             Edit
           </Button>
@@ -313,34 +360,50 @@ export default function VendorManager() {
     );
   }
 
+  function changePage(nextPage: number) {
+    if (nextPage < 1 || nextPage > totalPages || loading) {
+      return;
+    }
+
+    setLoading(true);
+    setPage(nextPage);
+  }
+
   return (
     <>
       <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
         <div>
-          <h1 className="h3 mb-1">Vendor Management</h1>
+          <h1 className="h3 fw-bold mb-1">Vendor Management</h1>
+
           <p className="text-body-secondary mb-0">
             Pengelolaan mitra pemasok, penyedia jasa, dan layanan pemeliharaan
-            aset
+            aset.
           </p>
         </div>
 
-        {canManage && <Button onClick={openCreate}>+ Tambah Vendor</Button>}
+        {canManage && (
+          <Button variant="primary" onClick={openCreate}>
+            + Tambah Vendor
+          </Button>
+        )}
       </div>
 
       <Row className="g-3 mb-4">
         <Col xs={12} md={4}>
-          <Card className="h-100 border-0 shadow-sm">
+          <Card className="border-0 shadow-sm h-100">
             <Card.Body>
               <div className="small text-body-secondary mb-2">Total Vendor</div>
+
               <div className="h3 fw-bold mb-0">{summary.total}</div>
             </Card.Body>
           </Card>
         </Col>
 
         <Col xs={6} md={4}>
-          <Card className="h-100 border-0 shadow-sm">
+          <Card className="border-0 shadow-sm h-100">
             <Card.Body>
               <div className="small text-body-secondary mb-2">Vendor Aktif</div>
+
               <div className="h3 fw-bold text-success mb-0">
                 {summary.active}
               </div>
@@ -349,9 +412,12 @@ export default function VendorManager() {
         </Col>
 
         <Col xs={6} md={4}>
-          <Card className="h-100 border-0 shadow-sm">
+          <Card className="border-0 shadow-sm h-100">
             <Card.Body>
-              <div className="small text-body-secondary mb-2">Nonaktif</div>
+              <div className="small text-body-secondary mb-2">
+                Vendor Nonaktif
+              </div>
+
               <div className="h3 fw-bold mb-0">{summary.inactive}</div>
             </Card.Body>
           </Card>
@@ -371,8 +437,9 @@ export default function VendorManager() {
       )}
 
       <Card className="shadow-sm">
-        <Card.Header className="d-flex align-items-center justify-content-between">
+        <Card.Header className="d-flex justify-content-between align-items-center">
           <strong>Daftar Vendor</strong>
+
           <Badge bg="primary">{total} data</Badge>
         </Card.Header>
 
@@ -381,6 +448,8 @@ export default function VendorManager() {
             className="d-flex flex-wrap gap-2 mb-4"
             onSubmit={(event) => {
               event.preventDefault();
+
+              setLoading(true);
               setPage(1);
               setQuery(search.trim());
               reload();
@@ -400,12 +469,15 @@ export default function VendorManager() {
               value={statusFilter}
               style={{ width: "auto" }}
               onChange={(event) => {
+                setLoading(true);
                 setPage(1);
                 setStatusFilter(event.target.value);
               }}
             >
               <option value="">Semua Status</option>
+
               <option value="ACTIVE">Aktif</option>
+
               <option value="INACTIVE">Nonaktif</option>
             </Form.Select>
 
@@ -430,7 +502,7 @@ export default function VendorManager() {
           ) : (
             <>
               <div className="d-none d-lg-block">
-                <Table hover responsive className="align-middle">
+                <Table responsive hover className="align-middle">
                   <thead>
                     <tr>
                       <th>Kode</th>
@@ -443,28 +515,33 @@ export default function VendorManager() {
                   </thead>
 
                   <tbody>
-                    {items.map((item) => (
-                      <tr key={item.id}>
-                        <td className="fw-semibold">{item.code}</td>
+                    {items.map((vendor) => (
+                      <tr key={vendor.id}>
+                        <td className="fw-semibold">{vendor.code}</td>
 
                         <td>
-                          <div className="fw-semibold">{item.name}</div>
+                          <div className="fw-semibold">{vendor.name}</div>
+
                           <div className="small text-body-secondary">
-                            {item.email || "-"}
+                            {vendor.email || "-"}
                           </div>
                         </td>
 
-                        <td>{categoryNames[item.category] || item.category}</td>
+                        <td>
+                          {categoryNames[vendor.category] || vendor.category}
+                        </td>
 
                         <td>
-                          <div>{item.contact_person || "-"}</div>
+                          <div>{vendor.contact_person || "-"}</div>
+
                           <div className="small text-body-secondary">
-                            {item.phone || "-"}
+                            {vendor.phone || "-"}
                           </div>
                         </td>
 
-                        <td>{renderStatus(item)}</td>
-                        <td>{actions(item)}</td>
+                        <td>{vendorStatus(vendor)}</td>
+
+                        <td>{vendorActions(vendor)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -473,29 +550,31 @@ export default function VendorManager() {
 
               <div className="d-lg-none">
                 <Row xs={1} md={2} className="g-3">
-                  {items.map((item) => (
-                    <Col key={item.id}>
+                  {items.map((vendor) => (
+                    <Col key={vendor.id}>
                       <Card className="h-100">
                         <Card.Body>
                           <div className="small text-body-secondary mb-1">
-                            {item.code}
+                            {vendor.code}
                           </div>
 
-                          <h2 className="h6 mb-2">{item.name}</h2>
+                          <h2 className="h6 fw-bold mb-2">{vendor.name}</h2>
 
                           <div className="small mb-2">
-                            {categoryNames[item.category] || item.category}
+                            {categoryNames[vendor.category] || vendor.category}
                           </div>
 
                           <div className="small mb-2">
-                            {item.contact_person || "Kontak belum diisi"}
+                            {vendor.contact_person || "Kontak belum diisi"}
                           </div>
 
-                          <div className="small mb-2">{item.phone || "-"}</div>
+                          <div className="small mb-3">
+                            {vendor.phone || "-"}
+                          </div>
 
-                          <div className="mb-3">{renderStatus(item)}</div>
+                          <div className="mb-3">{vendorStatus(vendor)}</div>
 
-                          {actions(item)}
+                          {vendorActions(vendor)}
                         </Card.Body>
                       </Card>
                     </Col>
@@ -515,7 +594,7 @@ export default function VendorManager() {
                 size="sm"
                 variant="outline-secondary"
                 disabled={loading || page <= 1}
-                onClick={() => setPage((value) => value - 1)}
+                onClick={() => changePage(page - 1)}
               >
                 Sebelumnya
               </Button>
@@ -524,7 +603,7 @@ export default function VendorManager() {
                 size="sm"
                 variant="outline-secondary"
                 disabled={loading || page >= totalPages}
-                onClick={() => setPage((value) => value + 1)}
+                onClick={() => changePage(page + 1)}
               >
                 Berikutnya
               </Button>
@@ -551,15 +630,13 @@ export default function VendorManager() {
           <Modal.Body>
             {dialogError && <Alert variant="danger">{dialogError}</Alert>}
 
-            {editing && (
+            {editing ? (
               <Alert variant="secondary">
                 Kode Vendor: <strong>{editing.code}</strong>
               </Alert>
-            )}
-
-            {!editing && (
+            ) : (
               <p className="small text-body-secondary">
-                Kode Vendor akan dibuat otomatis oleh sistem.
+                Kode Vendor dibuat otomatis oleh sistem.
               </p>
             )}
 
@@ -567,6 +644,7 @@ export default function VendorManager() {
               <Col xs={12} md={7}>
                 <Form.Group>
                   <Form.Label>Nama Vendor *</Form.Label>
+
                   <Form.Control
                     required
                     minLength={3}
@@ -584,6 +662,7 @@ export default function VendorManager() {
               <Col xs={12} md={5}>
                 <Form.Group>
                   <Form.Label>Jenis Vendor *</Form.Label>
+
                   <Form.Select
                     required
                     disabled={saving}
@@ -593,7 +672,9 @@ export default function VendorManager() {
                     }
                   >
                     <option value="SERVICE">Penyedia Jasa</option>
+
                     <option value="SUPPLIER">Pemasok Barang</option>
+
                     <option value="BOTH">Pemasok & Jasa</option>
                   </Form.Select>
                 </Form.Group>
@@ -602,6 +683,7 @@ export default function VendorManager() {
               <Col xs={12} md={6}>
                 <Form.Group>
                   <Form.Label>Nama Penanggung Jawab</Form.Label>
+
                   <Form.Control
                     maxLength={120}
                     disabled={saving}
@@ -617,6 +699,7 @@ export default function VendorManager() {
               <Col xs={12} md={6}>
                 <Form.Group>
                   <Form.Label>Nomor Telepon</Form.Label>
+
                   <Form.Control
                     type="tel"
                     maxLength={30}
@@ -633,6 +716,7 @@ export default function VendorManager() {
               <Col xs={12}>
                 <Form.Group>
                   <Form.Label>Email Vendor</Form.Label>
+
                   <Form.Control
                     type="email"
                     maxLength={254}
@@ -649,6 +733,7 @@ export default function VendorManager() {
               <Col xs={12}>
                 <Form.Group>
                   <Form.Label>Alamat</Form.Label>
+
                   <Form.Control
                     as="textarea"
                     rows={2}
@@ -665,6 +750,7 @@ export default function VendorManager() {
               <Col xs={12}>
                 <Form.Group>
                   <Form.Label>Catatan</Form.Label>
+
                   <Form.Control
                     as="textarea"
                     rows={3}
@@ -683,6 +769,7 @@ export default function VendorManager() {
                 <Col xs={12}>
                   <Form.Group>
                     <Form.Label>Status Vendor</Form.Label>
+
                     <Form.Select
                       disabled={saving}
                       value={form.is_active ? "ACTIVE" : "INACTIVE"}
@@ -694,10 +781,12 @@ export default function VendorManager() {
                       }
                     >
                       <option value="ACTIVE">Aktif</option>
+
                       <option value="INACTIVE">Nonaktif</option>
                     </Form.Select>
+
                     <Form.Text muted>
-                      Vendor nonaktif tetap tersimpan dalam riwayat.
+                      Vendor nonaktif tetap tersimpan dalam database.
                     </Form.Text>
                   </Form.Group>
                 </Col>
@@ -732,7 +821,7 @@ export default function VendorManager() {
       <Modal
         show={detail !== null}
         onHide={() => {
-          blurFocus();
+          releaseFocus();
           setDetail(null);
         }}
         centered
@@ -747,32 +836,39 @@ export default function VendorManager() {
             <div className="d-flex flex-column gap-3">
               <div>
                 <div className="small text-body-secondary">{detail.code}</div>
-                <h2 className="h5 mb-1">{detail.name}</h2>
-                {renderStatus(detail)}
+
+                <h2 className="h5 fw-bold mb-2">{detail.name}</h2>
+
+                {vendorStatus(detail)}
               </div>
 
               <div>
                 <strong>Jenis Vendor</strong>
+
                 <div>{categoryNames[detail.category] || detail.category}</div>
               </div>
 
               <div>
                 <strong>Penanggung Jawab</strong>
+
                 <div>{detail.contact_person || "-"}</div>
               </div>
 
               <div>
                 <strong>Nomor Telepon</strong>
+
                 <div>{detail.phone || "-"}</div>
               </div>
 
               <div>
                 <strong>Email</strong>
+
                 <div>{detail.email || "-"}</div>
               </div>
 
               <div>
                 <strong>Alamat</strong>
+
                 <div style={{ whiteSpace: "pre-wrap" }}>
                   {detail.address || "-"}
                 </div>
@@ -780,6 +876,7 @@ export default function VendorManager() {
 
               <div>
                 <strong>Catatan</strong>
+
                 <div style={{ whiteSpace: "pre-wrap" }}>
                   {detail.notes || "-"}
                 </div>
@@ -787,6 +884,10 @@ export default function VendorManager() {
 
               <div className="small text-body-secondary">
                 Dibuat: {formatDate(detail.created_at)}
+              </div>
+
+              <div className="small text-body-secondary">
+                Terakhir diperbarui: {formatDate(detail.updated_at)}
               </div>
             </div>
           )}
@@ -796,7 +897,7 @@ export default function VendorManager() {
           <Button
             variant="outline-secondary"
             onClick={() => {
-              blurFocus();
+              releaseFocus();
               setDetail(null);
             }}
           >

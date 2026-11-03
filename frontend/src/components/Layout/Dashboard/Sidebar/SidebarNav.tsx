@@ -95,10 +95,11 @@ const maintenanceMenus: MenuItem[] = [
     href: "/dashboard/work-orders",
     roles: allRoles,
   },
+
   {
     label: "Vendor",
     icon: faTruck,
-    href: "#",
+    href: "/dashboard/vendors",
     roles: ["SUPER_ADMIN", "ASSET_ADMIN"],
   },
 ];

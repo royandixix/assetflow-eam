@@ -59,19 +59,19 @@ var vendorPhone = regexp.MustCompile(
 
 const vendorColumns = `
 SELECT
-	id::text,
-	code,
-	name,
-	category,
-	contact_person,
-	phone,
-	email,
-	address,
-	notes,
-	is_active,
-	created_at,
-	updated_at
-FROM public.vendors
+	v.id::text,
+	v.code,
+	v.name,
+	v.category,
+	v.contact_person,
+	v.phone,
+	v.email,
+	v.address,
+	v.notes,
+	v.is_active,
+	v.created_at,
+	v.updated_at
+FROM public.vendors v
 `
 
 type scanner interface {
@@ -109,31 +109,54 @@ func handleDBError(c *gin.Context, err error) {
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 		case "42P01", "42703":
-			fail(c, http.StatusServiceUnavailable,
-				"Struktur tabel Vendor belum tersedia atau tidak sesuai")
+			fail(
+				c,
+				http.StatusServiceUnavailable,
+				"Struktur tabel Vendor belum tersedia atau tidak sesuai",
+			)
+			return
+
+		case "42501":
+			fail(
+				c,
+				http.StatusServiceUnavailable,
+				"Koneksi database tidak memiliki izin mengakses Vendor",
+			)
 			return
 
 		case "23505":
-			fail(c, http.StatusConflict,
-				"Kode Vendor sudah digunakan")
+			fail(
+				c,
+				http.StatusConflict,
+				"Kode Vendor sudah digunakan",
+			)
 			return
 
 		case "23503":
-			fail(c, http.StatusConflict,
-				"Referensi pengguna tidak valid")
+			fail(
+				c,
+				http.StatusConflict,
+				"Referensi pengguna tidak valid",
+			)
 			return
 
 		case "23514", "22001", "22P02":
-			fail(c, http.StatusBadRequest,
-				"Data Vendor tidak memenuhi aturan database")
+			fail(
+				c,
+				http.StatusBadRequest,
+				"Data Vendor tidak memenuhi aturan database",
+			)
 			return
 		}
 	}
 
 	log.Printf("[vendors] database error: %v", err)
 
-	fail(c, http.StatusInternalServerError,
-		"Gagal memproses data Vendor")
+	fail(
+		c,
+		http.StatusInternalServerError,
+		"Gagal memproses data Vendor",
+	)
 }
 
 func normalize(input *VendorInput) string {
@@ -167,6 +190,7 @@ func normalize(input *VendorInput) string {
 
 	if input.Phone != "" {
 		digits := 0
+
 		for _, char := range input.Phone {
 			if char >= '0' && char <= '9' {
 				digits++
@@ -204,6 +228,17 @@ func normalize(input *VendorInput) string {
 }
 
 func (h *Handler) List(c *gin.Context) {
+	identity, ok := middleware.CurrentIdentity(c)
+
+	if !ok {
+		fail(
+			c,
+			http.StatusUnauthorized,
+			"Login diperlukan",
+		)
+		return
+	}
+
 	page, err := strconv.Atoi(
 		c.DefaultQuery("page", "1"),
 	)
@@ -219,16 +254,22 @@ func (h *Handler) List(c *gin.Context) {
 	)
 
 	if utf8.RuneCountInString(q) > 100 {
-		fail(c, http.StatusBadRequest,
-			"Pencarian maksimal 100 karakter")
+		fail(
+			c,
+			http.StatusBadRequest,
+			"Pencarian maksimal 100 karakter",
+		)
 		return
 	}
 
 	if status != "" &&
 		status != "ACTIVE" &&
 		status != "INACTIVE" {
-		fail(c, http.StatusBadRequest,
-			"Filter status tidak valid")
+		fail(
+			c,
+			http.StatusBadRequest,
+			"Filter status tidak valid",
+		)
 		return
 	}
 
@@ -271,7 +312,8 @@ AND (
 	err = h.db.QueryRow(
 		ctx,
 		"SELECT COUNT(*) FROM public.vendors v "+filter,
-		q, status,
+		q,
+		status,
 	).Scan(&total)
 
 	if err != nil {
@@ -281,12 +323,10 @@ AND (
 
 	rows, err := h.db.Query(
 		ctx,
-		vendorColumns+`
-		AS v
-		`+filter+`
-		ORDER BY v.created_at DESC, v.id DESC
-		LIMIT $3 OFFSET $4
-		`,
+		vendorColumns+filter+`
+ORDER BY v.created_at DESC, v.id DESC
+LIMIT $3 OFFSET $4
+`,
 		q,
 		status,
 		10,
@@ -302,22 +342,20 @@ AND (
 	data := make([]Vendor, 0)
 
 	for rows.Next() {
-		v, scanErr := scanVendor(rows)
+		vendor, scanErr := scanVendor(rows)
 
 		if scanErr != nil {
 			handleDBError(c, scanErr)
 			return
 		}
 
-		data = append(data, v)
+		data = append(data, vendor)
 	}
 
 	if err := rows.Err(); err != nil {
 		handleDBError(c, err)
 		return
 	}
-
-	identity, _ := middleware.CurrentIdentity(c)
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": data,
@@ -340,22 +378,28 @@ func (h *Handler) Get(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 
 	if !vendorUUID.MatchString(id) {
-		fail(c, http.StatusBadRequest,
-			"ID Vendor tidak valid")
+		fail(
+			c,
+			http.StatusBadRequest,
+			"ID Vendor tidak valid",
+		)
 		return
 	}
 
-	v, err := scanVendor(
+	vendor, err := scanVendor(
 		h.db.QueryRow(
 			c.Request.Context(),
-			vendorColumns+" WHERE id = $1::uuid",
+			vendorColumns+" WHERE v.id = $1::uuid",
 			id,
 		),
 	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		fail(c, http.StatusNotFound,
-			"Vendor tidak ditemukan")
+		fail(
+			c,
+			http.StatusNotFound,
+			"Vendor tidak ditemukan",
+		)
 		return
 	}
 
@@ -364,23 +408,29 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, v)
+	c.JSON(http.StatusOK, vendor)
 }
 
 func (h *Handler) Create(c *gin.Context) {
 	identity, ok := middleware.CurrentIdentity(c)
 
 	if !ok {
-		fail(c, http.StatusUnauthorized,
-			"Login diperlukan")
+		fail(
+			c,
+			http.StatusUnauthorized,
+			"Login diperlukan",
+		)
 		return
 	}
 
 	var input VendorInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		fail(c, http.StatusBadRequest,
-			"Format Vendor tidak valid")
+		fail(
+			c,
+			http.StatusBadRequest,
+			"Format Vendor tidak valid",
+		)
 		return
 	}
 
@@ -406,8 +456,14 @@ INSERT INTO public.vendors (
 	created_by
 )
 VALUES (
-	$1, $2, $3, $4,
-	$5, $6, $7, $8::uuid
+	$1,
+	$2,
+	$3,
+	$4,
+	$5,
+	$6,
+	$7,
+	$8::uuid
 )
 RETURNING id::text, code
 `,
@@ -437,30 +493,42 @@ func (h *Handler) Update(c *gin.Context) {
 	identity, ok := middleware.CurrentIdentity(c)
 
 	if !ok {
-		fail(c, http.StatusUnauthorized,
-			"Login diperlukan")
+		fail(
+			c,
+			http.StatusUnauthorized,
+			"Login diperlukan",
+		)
 		return
 	}
 
 	id := strings.TrimSpace(c.Param("id"))
 
 	if !vendorUUID.MatchString(id) {
-		fail(c, http.StatusBadRequest,
-			"ID Vendor tidak valid")
+		fail(
+			c,
+			http.StatusBadRequest,
+			"ID Vendor tidak valid",
+		)
 		return
 	}
 
 	var input VendorInput
 
 	if err := c.ShouldBindJSON(&input); err != nil {
-		fail(c, http.StatusBadRequest,
-			"Format Vendor tidak valid")
+		fail(
+			c,
+			http.StatusBadRequest,
+			"Format Vendor tidak valid",
+		)
 		return
 	}
 
 	if input.IsActive == nil {
-		fail(c, http.StatusBadRequest,
-			"Status Vendor wajib diisi")
+		fail(
+			c,
+			http.StatusBadRequest,
+			"Status Vendor wajib diisi",
+		)
 		return
 	}
 
@@ -504,8 +572,11 @@ WHERE id = $1::uuid
 	}
 
 	if tag.RowsAffected() == 0 {
-		fail(c, http.StatusNotFound,
-			"Vendor tidak ditemukan")
+		fail(
+			c,
+			http.StatusNotFound,
+			"Vendor tidak ditemukan",
+		)
 		return
 	}
 
