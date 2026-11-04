@@ -5,6 +5,7 @@ import "@/styles/globals.scss";
 import "./globals.css";
 
 config.autoAddCss = false;
+
 export const metadata: Metadata = {
   title: "AssetFlow EAM",
   description: "Enterprise Asset Management Platform",
@@ -16,8 +17,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" data-bs-theme="light">
+    <html lang="id" data-bs-theme="light" data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   );
 }
+
+
+
+
