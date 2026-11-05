@@ -95,7 +95,6 @@ const maintenanceMenus: MenuItem[] = [
     href: "/dashboard/work-orders",
     roles: allRoles,
   },
-
   {
     label: "Vendor",
     icon: faTruck,
@@ -108,13 +107,13 @@ const monitoringMenus: MenuItem[] = [
   {
     label: "Laporan",
     icon: faChartPie,
-    href: "#",
+    href: "/dashboard/reports",
     roles: ["SUPER_ADMIN", "ASSET_ADMIN", "MANAGER"],
   },
   {
     label: "Notifikasi",
     icon: faBell,
-    href: "#",
+    href: "/dashboard/notifications",
     roles: allRoles,
   },
 ];
