@@ -128,13 +128,13 @@ const administrationMenus: MenuItem[] = [
   {
     label: "Audit Trail",
     icon: faClockRotateLeft,
-    href: "#",
+    href: "/dashboard/audit-trail",
     roles: ["SUPER_ADMIN"],
   },
   {
     label: "Pengaturan",
     icon: faGear,
-    href: "#",
+    href: "/dashboard/settings",
     roles: ["SUPER_ADMIN"],
   },
 ];

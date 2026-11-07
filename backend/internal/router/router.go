@@ -13,11 +13,13 @@ import (
 	"github.com/royandixix/assetflow-eam/backend/internal/middleware"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/assets"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/assignments"
+	"github.com/royandixix/assetflow-eam/backend/internal/modules/audittrail"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/categories"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/departments"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/locations"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/maintenance"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/reports"
+	"github.com/royandixix/assetflow-eam/backend/internal/modules/settings"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/transfers"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/users"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/vendors"
@@ -75,6 +77,7 @@ func New(db *pgxpool.Pool, authClient *auth.Client) *gin.Engine {
 	protected := api.Group("")
 	protected.Use(middleware.Authenticate(authClient, db))
 
+	protected.Use(middleware.AuditChanges(db))
 	categories.RegisterRoutes(protected, db)
 	locations.RegisterRoutes(protected, db)
 	departments.RegisterRoutes(protected, db)
@@ -86,6 +89,8 @@ func New(db *pgxpool.Pool, authClient *auth.Client) *gin.Engine {
 	users.RegisterRoutes(protected, db)
 	vendors.RegisterRoutes(protected, db)
 	reports.RegisterRoutes(protected, db)
+	audittrail.RegisterRoutes(protected, db)
+	settings.RegisterRoutes(protected, db)
 
 	protected.GET("/auth/me", func(c *gin.Context) {
 		identity, _ := middleware.CurrentIdentity(c)
