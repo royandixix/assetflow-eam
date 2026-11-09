@@ -12,6 +12,7 @@ import Footer from "@/components/Layout/Dashboard/Footer/Footer";
 import { requireIdentity } from "@/lib/auth/get-identity";
 import { getDictionary } from "@/locales/dictionary";
 import { AssetFlowDictionaryProvider } from "@/locales/assetflow-dictionary-provider";
+import SettingsRuntime from "@/components/page/settings/SettingsRuntime";
 
 type DashboardLayoutProps = {
   children: ReactNode;
@@ -41,6 +42,7 @@ export default async function DashboardLayout({
 
           <main className="body flex-grow-1 px-sm-2 mb-4">
             <Container fluid="lg">
+              <SettingsRuntime />
               {children}
             </Container>
           </main>

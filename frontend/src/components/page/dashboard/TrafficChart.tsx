@@ -1,125 +1,180 @@
-'use client'
+"use client";
 
-import { Line } from 'react-chartjs-2'
-import React from 'react'
+import { Line } from "react-chartjs-2";
+
 import {
-  BarElement,
+  Chart as ChartJS,
   CategoryScale,
-  Chart,
-  Filler,
   LinearScale,
-  LineElement,
   PointElement,
+  LineElement,
   Tooltip,
-} from 'chart.js'
-import useDictionary from '@/locales/dictionary-hook'
-import useComputedStyle from '@/hooks/use-computed-style'
+  Filler,
+  type ChartOptions,
+} from "chart.js";
 
-Chart.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Filler)
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Filler,
+);
 
-const random = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min)
+export type DashboardSummary = {
+  assets_total: number;
+  assets_available: number;
+  assets_assigned: number;
+  assets_maintenance: number;
+  maintenance_total: number;
+  maintenance_pending: number;
+  maintenance_active: number;
+  work_orders_total: number;
+  work_orders_assigned: number;
+  work_orders_in_progress: number;
+  work_orders_completed: number;
+  work_orders_closed: number;
+  vendors_total: number;
+  vendors_active: number;
+};
 
-export default function TrafficChart() {
-  const dict = useDictionary()
-  const borderColor = useComputedStyle('--bs-border-color')
-  const bodyColor = useComputedStyle('--bs-body-color')
+export type ChartMode = "assets" | "maintenance" | "work_orders";
+
+type Props = {
+  summary: DashboardSummary;
+  mode: ChartMode;
+};
+
+export function getChartValues(summary: DashboardSummary, mode: ChartMode) {
+  if (mode === "assets") {
+    const remaining = Math.max(
+      0,
+      summary.assets_total -
+        summary.assets_available -
+        summary.assets_assigned -
+        summary.assets_maintenance,
+    );
+
+    return {
+      title: "Distribusi Status Aset",
+      labels: ["Tersedia", "Ditugaskan", "Maintenance", "Lainnya"],
+      values: [
+        summary.assets_available,
+        summary.assets_assigned,
+        summary.assets_maintenance,
+        remaining,
+      ],
+    };
+  }
+
+  if (mode === "maintenance") {
+    const remaining = Math.max(
+      0,
+      summary.maintenance_total -
+        summary.maintenance_pending -
+        summary.maintenance_active,
+    );
+
+    return {
+      title: "Distribusi Permintaan Maintenance",
+      labels: ["Menunggu", "Aktif", "Lainnya"],
+      values: [
+        summary.maintenance_pending,
+        summary.maintenance_active,
+        remaining,
+      ],
+    };
+  }
+
+  const remaining = Math.max(
+    0,
+    summary.work_orders_total -
+      summary.work_orders_assigned -
+      summary.work_orders_in_progress -
+      summary.work_orders_completed -
+      summary.work_orders_closed,
+  );
+
+  return {
+    title: "Distribusi Work Orders",
+    labels: ["Ditugaskan", "Dikerjakan", "Selesai", "Ditutup", "Lainnya"],
+    values: [
+      summary.work_orders_assigned,
+      summary.work_orders_in_progress,
+      summary.work_orders_completed,
+      summary.work_orders_closed,
+      remaining,
+    ],
+  };
+}
+
+export default function TrafficChart({ summary, mode }: Props) {
+  const chart = getChartValues(summary, mode);
+
+  const options: ChartOptions<"line"> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      intersect: false,
+      mode: "index",
+    },
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        enabled: true,
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          color: "#64748b",
+        },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          color: "#64748b",
+          precision: 0,
+        },
+        grid: {
+          color: "rgba(100,116,139,0.16)",
+        },
+      },
+    },
+    elements: {
+      line: {
+        tension: 0.35,
+      },
+      point: {
+        radius: 4,
+        hoverRadius: 7,
+      },
+    },
+  };
 
   return (
     <Line
       data={{
-        labels: [
-          dict.dashboard.traffic.chart.xlabel1,
-          dict.dashboard.traffic.chart.xlabel2,
-          dict.dashboard.traffic.chart.xlabel3,
-          dict.dashboard.traffic.chart.xlabel4,
-          dict.dashboard.traffic.chart.xlabel5,
-          dict.dashboard.traffic.chart.xlabel6,
-          dict.dashboard.traffic.chart.xlabel7,
+        labels: chart.labels,
+        datasets: [
+          {
+            label: chart.title,
+            data: chart.values,
+            borderColor: "#0dcaf0",
+            backgroundColor: "rgba(13,202,240,0.18)",
+            pointBackgroundColor: "#0dcaf0",
+            borderWidth: 2,
+            fill: true,
+          },
         ],
-        datasets: [{
-          label: 'My First dataset',
-          backgroundColor: 'rgba(0, 0, 0, 0.2)',
-          borderColor: 'rgba(13, 202, 240, 1)',
-          pointHoverBackgroundColor: '#fff',
-          borderWidth: 2,
-          data: [
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-          ],
-          fill: true,
-        }, {
-          label: 'My Second dataset',
-          borderColor: 'rgba(25, 135, 84, 1)',
-          pointHoverBackgroundColor: '#fff',
-          borderWidth: 2,
-          data: [
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-            random(50, 200),
-          ],
-        }, {
-          label: 'My Third dataset',
-          borderColor: 'rgba(220, 53, 69, 1)',
-          pointHoverBackgroundColor: '#fff',
-          borderWidth: 1,
-          borderDash: [8, 5],
-          data: [65, 65, 65, 65, 65, 65, 65],
-        }],
       }}
-      options={{
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false,
-          },
-        },
-        scales: {
-          x: {
-            grid: {
-              color: borderColor,
-              drawOnChartArea: false,
-            },
-            ticks: {
-              color: bodyColor,
-            },
-          },
-          y: {
-            beginAtZero: true,
-            border: {
-              color: borderColor,
-            },
-            grid: {
-              color: borderColor,
-            },
-            max: 250,
-            ticks: {
-              color: bodyColor,
-              maxTicksLimit: 5,
-              stepSize: Math.ceil(250 / 5),
-            },
-          },
-        },
-        elements: {
-          line: {
-            tension: 0.4,
-          },
-          point: {
-            radius: 0,
-            hitRadius: 10,
-            hoverRadius: 4,
-            hoverBorderWidth: 3,
-          },
-        },
-      }}
+      options={options}
     />
-  )
+  );
 }

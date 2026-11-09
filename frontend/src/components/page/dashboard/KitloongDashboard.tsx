@@ -1,1189 +1,854 @@
-import Image from 'next/image'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import {
-  faArrowDown,
-  faArrowUp,
-  faDownload,
-  faEllipsisVertical,
-  faMars,
-  faSearch,
-  faUsers,
-  faVenus,
-} from '@fortawesome/free-solid-svg-icons'
-import {
-  Button,
-  ButtonGroup,
-  Card,
-  CardBody,
-  CardFooter,
-  CardHeader,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownToggle,
-  ProgressBar,
-} from 'react-bootstrap'
-import {
-  faCcAmex,
-  faCcApplePay,
-  faCcPaypal,
-  faCcStripe,
-  faCcVisa,
-  faFacebookF,
-  faLinkedinIn,
-  faTwitter,
-} from '@fortawesome/free-brands-svg-icons'
-import React from 'react'
-import UserChart from '@/components/page/dashboard/UserChart'
-import IncomeChart from '@/components/page/dashboard/IncomeChart'
-import ConversionChart from '@/components/page/dashboard/ConversionChart'
-import SessionChart from '@/components/page/dashboard/SessionChart'
-import TrafficChart from '@/components/page/dashboard/TrafficChart'
-import { getDictionary } from '@/locales/dictionary'
+"use client";
 
-export default async function Page() {
-  const dict = await getDictionary()
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Line } from "react-chartjs-2";
+
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Filler,
+  type ChartOptions,
+} from "chart.js";
+
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Col,
+  ProgressBar,
+  Row,
+  Spinner,
+  Table,
+} from "react-bootstrap";
+
+import TrafficChart, {
+  getChartValues,
+  type ChartMode,
+  type DashboardSummary,
+} from "./TrafficChart";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Filler,
+);
+
+type WorkOrder = {
+  Number: string;
+  AssetCode: string;
+  AssetName: string;
+  Title: string;
+  Status: string;
+  TechnicianName: string;
+  CreatedAt: string;
+};
+
+type ReportResponse = {
+  summary: DashboardSummary;
+  work_orders: WorkOrder[];
+  generated_at: string;
+};
+
+type LoadState = {
+  data: ReportResponse | null;
+  loading: boolean;
+  error: string;
+};
+
+type Props = {
+  roleCode: string;
+};
+
+type MiniChartProps = {
+  values: number[];
+};
+
+type ProgressItemProps = {
+  label: string;
+  count: number;
+  total: number;
+  variant: string;
+};
+
+const formatNumber = new Intl.NumberFormat("id-ID");
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function readString(
+  record: Record<string, unknown>,
+  ...keys: string[]
+): string {
+  for (const key of keys) {
+    const value = record[key];
+
+    if (typeof value === "string") {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+function normalizeWorkOrder(value: unknown): WorkOrder {
+  const row = isRecord(value) ? value : {};
+
+  return {
+    Number: readString(row, "Number", "number"),
+
+    AssetCode: readString(row, "AssetCode", "asset_code", "assetCode"),
+
+    AssetName: readString(row, "AssetName", "asset_name", "assetName"),
+
+    Title: readString(row, "Title", "title"),
+
+    Status: readString(row, "Status", "status").trim().toUpperCase(),
+
+    TechnicianName: readString(
+      row,
+      "TechnicianName",
+      "technician_name",
+      "technicianName",
+    ),
+
+    CreatedAt: readString(row, "CreatedAt", "created_at", "createdAt"),
+  };
+}
+
+function normalizeSummary(value: unknown): DashboardSummary {
+  if (!isRecord(value)) {
+    throw new Error("Data ringkasan laporan tidak valid");
+  }
+
+  const keys: (keyof DashboardSummary)[] = [
+    "assets_total",
+    "assets_available",
+    "assets_assigned",
+    "assets_maintenance",
+    "maintenance_total",
+    "maintenance_pending",
+    "maintenance_active",
+    "work_orders_total",
+    "work_orders_assigned",
+    "work_orders_in_progress",
+    "work_orders_completed",
+    "work_orders_closed",
+    "vendors_total",
+    "vendors_active",
+  ];
+
+  const result = {} as DashboardSummary;
+
+  for (const key of keys) {
+    const raw = value[key];
+
+    if ((typeof raw !== "number" && typeof raw !== "string") || raw === "") {
+      throw new Error(`Data statistik ${key} tidak tersedia`);
+    }
+
+    const number = Number(raw);
+
+    if (!Number.isFinite(number) || number < 0) {
+      throw new Error(`Nilai statistik ${key} tidak valid`);
+    }
+
+    result[key] = number;
+  }
+
+  return result;
+}
+
+function percentage(value: number, total: number): number {
+  if (total <= 0) return 0;
+
+  return Math.min(100, Math.max(0, Math.round((value / total) * 100)));
+}
+
+function statusLabel(status: unknown): string {
+  if (typeof status !== "string" || !status.trim()) {
+    return "Status tidak tersedia";
+  }
+
+  const labels: Record<string, string> = {
+    PENDING: "Menunggu",
+    APPROVED: "Disetujui",
+    ASSIGNED: "Ditugaskan",
+    IN_PROGRESS: "Dikerjakan",
+    COMPLETED: "Selesai",
+    CLOSED: "Ditutup",
+    CANCELLED: "Dibatalkan",
+    REJECTED: "Ditolak",
+    OPEN: "Terbuka",
+    DRAFT: "Draft",
+  };
+
+  const normalized = status.trim().toUpperCase();
+
+  return labels[normalized] ?? normalized.replaceAll("_", " ");
+}
+
+function statusVariant(status: unknown): string {
+  if (typeof status !== "string") {
+    return "secondary";
+  }
+
+  switch (status.trim().toUpperCase()) {
+    case "COMPLETED":
+    case "CLOSED":
+      return "success";
+
+    case "IN_PROGRESS":
+      return "info";
+
+    case "PENDING":
+      return "warning";
+
+    case "CANCELLED":
+    case "REJECTED":
+      return "danger";
+
+    case "ASSIGNED":
+    case "APPROVED":
+      return "primary";
+
+    default:
+      return "secondary";
+  }
+}
+
+function displayDate(value: string): string {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+async function readReport(signal: AbortSignal): Promise<ReportResponse> {
+  const response = await fetch("/api/reports/summary", {
+    method: "GET",
+    cache: "no-store",
+    signal,
+  });
+
+  const body: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    let message = `Gagal memuat laporan (HTTP ${response.status})`;
+
+    if (isRecord(body) && typeof body.message === "string") {
+      message = body.message;
+    }
+
+    throw new Error(message);
+  }
+
+  if (!isRecord(body)) {
+    throw new Error("Respons API Reports bukan JSON yang valid");
+  }
+
+  const summary = normalizeSummary(body.summary);
+
+  if (!Array.isArray(body.work_orders)) {
+    throw new Error("Format daftar Work Orders dari API tidak sesuai");
+  }
+
+  const workOrders = body.work_orders.map(normalizeWorkOrder);
+
+  return {
+    summary,
+    work_orders: workOrders,
+    generated_at:
+      typeof body.generated_at === "string" ? body.generated_at : "",
+  };
+}
+
+function MiniChart({ values }: MiniChartProps) {
+  const options: ChartOptions<"line"> = {
+    responsive: true,
+    maintainAspectRatio: false,
+
+    plugins: {
+      legend: {
+        display: false,
+      },
+
+      tooltip: {
+        enabled: true,
+      },
+    },
+
+    scales: {
+      x: {
+        display: false,
+      },
+
+      y: {
+        display: false,
+        beginAtZero: true,
+      },
+    },
+
+    elements: {
+      line: {
+        tension: 0.4,
+        borderWidth: 2,
+      },
+
+      point: {
+        radius: 3,
+        hoverRadius: 5,
+      },
+    },
+  };
 
   return (
-    <div>
-      <div className="row">
-        <div className="col-sm-6 col-lg-3">
-          <Card bg="primary" text="white" className="mb-4">
-            <CardBody className="pb-0 d-flex justify-content-between align-items-start">
-              <div>
-                <div className="fs-4 fw-semibold">
-                  26K
-                  <span className="fs-6 ms-2 fw-normal">
-                    (-12.4%
-                    <FontAwesomeIcon icon={faArrowDown} fixedWidth />
-                    )
-                  </span>
-                </div>
-                <div>{dict.dashboard.featured.user}</div>
-              </div>
-              <Dropdown align="end">
-                <DropdownToggle
-                  as="button"
-                  bsPrefix="btn"
-                  className="btn-link rounded-0 text-white shadow-none p-0"
-                  id="dropdown-chart1"
-                >
-                  <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                </DropdownToggle>
+    <Line
+      options={options}
+      data={{
+        labels: values.map((_, index) => String(index + 1)),
 
-                <DropdownMenu>
-                  <DropdownItem href="#/action-1">{dict.dashboard.featured.action.action1}</DropdownItem>
-                  <DropdownItem href="#/action-2">{dict.dashboard.featured.action.action2}</DropdownItem>
-                  <DropdownItem href="#/action-3">{dict.dashboard.featured.action.action3}</DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-            </CardBody>
-            <div className="mt-3 mx-3" style={{ height: '70px' }}>
-              <UserChart />
-            </div>
-          </Card>
-        </div>
+        datasets: [
+          {
+            label: "Distribusi status",
+            data: values,
+            borderColor: "rgba(255,255,255,0.85)",
+            backgroundColor: "rgba(255,255,255,0.12)",
+            pointBackgroundColor: "#ffffff",
+            fill: true,
+          },
+        ],
+      }}
+    />
+  );
+}
 
-        <div className="col-sm-6 col-lg-3">
-          <Card bg="info" text="white" className="mb-4">
-            <CardBody className="pb-0 d-flex justify-content-between align-items-start">
-              <div>
-                <div className="fs-4 fw-semibold">
-                  $6.200
-                  <span className="fs-6 ms-2 fw-normal">
-                    (40.9%
-                    <FontAwesomeIcon icon={faArrowUp} fixedWidth />
-                    )
-                  </span>
-                </div>
-                <div>{dict.dashboard.featured.income}</div>
-              </div>
-              <Dropdown align="end">
-                <DropdownToggle
-                  as="button"
-                  bsPrefix="btn"
-                  className="btn-link rounded-0 text-white shadow-none p-0"
-                  id="dropdown-chart2"
-                >
-                  <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                </DropdownToggle>
+function ProgressItem({ label, count, total, variant }: ProgressItemProps) {
+  const value = percentage(count, total);
 
-                <DropdownMenu>
-                  <DropdownItem href="#/action-1">{dict.dashboard.featured.action.action1}</DropdownItem>
-                  <DropdownItem href="#/action-2">{dict.dashboard.featured.action.action2}</DropdownItem>
-                  <DropdownItem href="#/action-3">{dict.dashboard.featured.action.action3}</DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-            </CardBody>
-            <div className="mt-3 mx-3" style={{ height: '70px' }}>
-              <IncomeChart />
-            </div>
-          </Card>
-        </div>
+  return (
+    <Col xs={12} sm={6} lg>
+      <div className="text-center mb-2">
+        <div className="text-body-secondary small">{label}</div>
 
-        <div className="col-sm-6 col-lg-3">
-          <Card bg="warning" text="white" className="mb-4">
-            <CardBody className="pb-0 d-flex justify-content-between align-items-start">
-              <div>
-                <div className="fs-4 fw-semibold">
-                  2.49%
-                  <span className="fs-6 ms-2 fw-normal">
-                    (84.7%
-                    <FontAwesomeIcon icon={faArrowUp} fixedWidth />
-                    )
-                  </span>
-                </div>
-                <div>{dict.dashboard.featured.conversion_rate}</div>
-              </div>
-              <Dropdown align="end">
-                <DropdownToggle
-                  as="button"
-                  bsPrefix="btn"
-                  className="btn-link rounded-0 text-white shadow-none p-0"
-                  id="dropdown-chart3"
-                >
-                  <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                </DropdownToggle>
-
-                <DropdownMenu>
-                  <DropdownItem href="#/action-1">{dict.dashboard.featured.action.action1}</DropdownItem>
-                  <DropdownItem href="#/action-2">{dict.dashboard.featured.action.action2}</DropdownItem>
-                  <DropdownItem href="#/action-3">{dict.dashboard.featured.action.action3}</DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-            </CardBody>
-            <div className="mt-3 mx-3" style={{ height: '70px' }}>
-              <ConversionChart />
-            </div>
-          </Card>
-        </div>
-
-        <div className="col-sm-6 col-lg-3">
-          <Card bg="danger" text="white" className="mb-4">
-            <CardBody className="pb-0 d-flex justify-content-between align-items-start">
-              <div>
-                <div className="fs-4 fw-semibold">
-                  44K
-                  <span className="fs-6 ms-2 fw-normal">
-                    (-23.6%
-                    <FontAwesomeIcon icon={faArrowDown} fixedWidth />
-                    )
-                  </span>
-                </div>
-                <div>{dict.dashboard.featured.sessions}</div>
-              </div>
-              <Dropdown align="end">
-                <DropdownToggle
-                  as="button"
-                  bsPrefix="btn"
-                  className="btn-link rounded-0 text-white shadow-none p-0"
-                  id="dropdown-chart4"
-                >
-                  <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                </DropdownToggle>
-
-                <DropdownMenu>
-                  <DropdownItem href="#/action-1">{dict.dashboard.featured.action.action1}</DropdownItem>
-                  <DropdownItem href="#/action-2">{dict.dashboard.featured.action.action2}</DropdownItem>
-                  <DropdownItem href="#/action-3">{dict.dashboard.featured.action.action3}</DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-            </CardBody>
-            <div className="mt-3 mx-3" style={{ height: '70px' }}>
-              <SessionChart />
-            </div>
-          </Card>
+        <div className="fw-semibold small">
+          {formatNumber.format(count)} ({value}%)
         </div>
       </div>
 
-      <Card className="mb-4">
-        <CardBody>
-          <div className="d-flex justify-content-between">
+      <ProgressBar className="progress-thin" variant={variant} now={value} />
+    </Col>
+  );
+}
+
+function exportSummaryCSV(summary: DashboardSummary) {
+  const records: [string, number][] = [
+    ["Total Aset", summary.assets_total],
+    ["Aset Tersedia", summary.assets_available],
+    ["Aset Ditugaskan", summary.assets_assigned],
+    ["Aset Maintenance", summary.assets_maintenance],
+    ["Total Maintenance", summary.maintenance_total],
+    ["Maintenance Menunggu", summary.maintenance_pending],
+    ["Maintenance Aktif", summary.maintenance_active],
+    ["Total Work Orders", summary.work_orders_total],
+    ["WO Ditugaskan", summary.work_orders_assigned],
+    ["WO Dikerjakan", summary.work_orders_in_progress],
+    ["WO Selesai", summary.work_orders_completed],
+    ["WO Ditutup", summary.work_orders_closed],
+    ["Total Vendor", summary.vendors_total],
+    ["Vendor Aktif", summary.vendors_active],
+  ];
+
+  const csv = [
+    "Indikator,Jumlah",
+    ...records.map(([label, count]) => `"${label}",${count}`),
+  ].join("\r\n");
+
+  const blob = new Blob(["\uFEFF", csv], {
+    type: "text/csv;charset=utf-8",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+
+  anchor.href = url;
+  anchor.download = "assetflow-ringkasan-dashboard.csv";
+
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  URL.revokeObjectURL(url);
+}
+
+export default function KitloongDashboard({ roleCode }: Props) {
+  const [mode, setMode] = useState<ChartMode>("assets");
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [state, setState] = useState<LoadState>({
+    data: null,
+    loading: true,
+    error: "",
+  });
+
+  const canViewReport = ["SUPER_ADMIN", "ASSET_ADMIN", "MANAGER"].includes(
+    roleCode,
+  );
+
+  const canOpenAssets = ["SUPER_ADMIN", "ASSET_ADMIN"].includes(roleCode);
+
+  useEffect(() => {
+    if (!canViewReport) return;
+
+    const controller = new AbortController();
+
+    void readReport(controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setState({
+          data,
+          loading: false,
+          error: "",
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setState((previous) => ({
+          ...previous,
+          loading: false,
+          error:
+            error instanceof Error ? error.message : "Gagal memuat Dashboard",
+        }));
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [canViewReport, refreshKey]);
+
+  function reloadDashboard() {
+    setState((previous) => ({
+      ...previous,
+      loading: true,
+      error: "",
+    }));
+
+    setRefreshKey((previous) => previous + 1);
+  }
+
+  if (!canViewReport) {
+    return (
+      <div className="py-3">
+        <h3 className="fw-bold">Dashboard AssetFlow EAM</h3>
+
+        <Alert variant="info" className="mt-3">
+          Ringkasan laporan operasional tersedia sesuai hak akses pengguna.
+        </Alert>
+
+        <Link href="/dashboard/maintenance">Buka Maintenance</Link>
+      </div>
+    );
+  }
+
+  const data = state.data;
+  const summary = data?.summary;
+
+  if (!summary && state.loading) {
+    return (
+      <div className="text-center py-5">
+        <Spinner animation="border" variant="primary" />
+
+        <p className="text-body-secondary mt-3">
+          Memuat Dashboard AssetFlow EAM...
+        </p>
+      </div>
+    );
+  }
+
+  if (!summary) {
+    return (
+      <Alert variant="danger">
+        {state.error || "Data Dashboard belum tersedia"}
+
+        <div className="mt-3">
+          <Button variant="outline-danger" onClick={reloadDashboard}>
+            Coba Lagi
+          </Button>
+        </div>
+      </Alert>
+    );
+  }
+
+  const assetsChart = getChartValues(summary, "assets");
+
+  const maintenanceChart = getChartValues(summary, "maintenance");
+
+  const workOrdersChart = getChartValues(summary, "work_orders");
+
+  const activeWorkOrders =
+    summary.work_orders_assigned + summary.work_orders_in_progress;
+
+  const cards = [
+    {
+      title: "Total Aset",
+      value: summary.assets_total,
+      detail: `${formatNumber.format(summary.assets_available)} tersedia`,
+      bg: "bg-primary",
+      href: "/dashboard/assets",
+      canOpen: canOpenAssets,
+      values: assetsChart.values,
+    },
+    {
+      title: "Aset Tersedia",
+      value: summary.assets_available,
+      detail: `${percentage(
+        summary.assets_available,
+        summary.assets_total,
+      )}% dari total aset`,
+      bg: "bg-info",
+      href: "/dashboard/assets",
+      canOpen: canOpenAssets,
+      values: [
+        summary.assets_available,
+        summary.assets_assigned,
+        summary.assets_maintenance,
+      ],
+    },
+    {
+      title: "Permintaan Maintenance",
+      value: summary.maintenance_total,
+      detail: `${formatNumber.format(summary.maintenance_pending)} menunggu`,
+      bg: "bg-warning",
+      href: "/dashboard/maintenance",
+      canOpen: true,
+      values: maintenanceChart.values,
+    },
+    {
+      title: "Work Orders",
+      value: summary.work_orders_total,
+      detail: `${formatNumber.format(activeWorkOrders)} sedang ditangani`,
+      bg: "bg-danger",
+      href: "/dashboard/work-orders",
+      canOpen: true,
+      values: workOrdersChart.values,
+    },
+  ];
+
+  const chartTitles: Record<ChartMode, string> = {
+    assets: "Grafik Status Aset",
+    maintenance: "Grafik Status Maintenance",
+    work_orders: "Grafik Status Work Orders",
+  };
+
+  const recentWorkOrders = data?.work_orders ?? [];
+
+  return (
+    <div className="py-1">
+      {state.error && <Alert variant="danger">{state.error}</Alert>}
+
+      <Row className="g-3 mb-4">
+        {cards.map((card) => {
+          const content = (
+            <Card className={["h-100 border-0 text-white", card.bg].join(" ")}>
+              <Card.Body className="pb-2">
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h3 className="fw-bold mb-1">
+                      {formatNumber.format(card.value)}
+                    </h3>
+
+                    <div className="fw-semibold small">{card.title}</div>
+
+                    <div className="small mt-1 text-white-50">
+                      {card.detail}
+                    </div>
+                  </div>
+
+                  <span className="fs-5" aria-hidden="true">
+                    ⋮
+                  </span>
+                </div>
+              </Card.Body>
+
+              <div className="px-3 pb-3" style={{ height: 82 }}>
+                <MiniChart values={card.values} />
+              </div>
+            </Card>
+          );
+
+          return (
+            <Col key={card.title} xs={12} sm={6} xl={3}>
+              {card.canOpen ? (
+                <Link
+                  href={card.href}
+                  className="text-decoration-none d-block h-100"
+                  aria-label={`Buka modul ${card.title}`}
+                >
+                  {content}
+                </Link>
+              ) : (
+                content
+              )}
+            </Col>
+          );
+        })}
+      </Row>
+
+      <Card className="mb-4 shadow-sm">
+        <Card.Body className="pb-0">
+          <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
             <div>
-              <h4 className="mb-0">{dict.dashboard.traffic.title}</h4>
-              <div className="small text-black-50 dark:text-gray-500">{dict.dashboard.traffic.duration}</div>
+              <h4 className="fw-semibold mb-1">{chartTitles[mode]}</h4>
+
+              <div className="text-body-secondary small">
+                Data operasional aktual dari PostgreSQL
+              </div>
             </div>
-            <div className="d-none d-md-block">
-              <ButtonGroup aria-label="Toolbar with buttons" className="mx-3">
-                <input
-                  className="btn-check"
-                  id="option1"
-                  type="radio"
-                  name="options"
-                  autoComplete="off"
-                />
-                <label
-                  className="btn btn-outline-secondary"
-                  htmlFor="option1"
-                >
-                  {dict.dashboard.traffic.option.day}
-                </label>
-                <input
-                  className="btn-check"
-                  id="option2"
-                  type="radio"
-                  name="options"
-                  autoComplete="off"
-                  defaultChecked
-                />
-                <label
-                  className="btn btn-outline-secondary active"
-                  htmlFor="option2"
-                >
-                  {dict.dashboard.traffic.option.month}
-                </label>
-                <input
-                  className="btn-check"
-                  id="option3"
-                  type="radio"
-                  name="options"
-                  autoComplete="off"
-                />
-                <label
-                  className="btn btn-outline-secondary"
-                  htmlFor="option3"
-                >
-                  {dict.dashboard.traffic.option.year}
-                </label>
-              </ButtonGroup>
-              <Button variant="primary">
-                <FontAwesomeIcon icon={faDownload} fixedWidth />
+
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <div
+                className="btn-group"
+                role="group"
+                aria-label="Filter grafik"
+              >
+                {(
+                  [
+                    ["assets", "Aset"],
+                    ["maintenance", "Maintenance"],
+                    ["work_orders", "Work Orders"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <Button
+                    key={key}
+                    size="sm"
+                    variant={mode === key ? "secondary" : "outline-secondary"}
+                    onClick={() => setMode(key)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={state.loading}
+                onClick={reloadDashboard}
+              >
+                {state.loading ? "Memuat..." : "Muat Ulang"}
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline-primary"
+                onClick={() => exportSummaryCSV(summary)}
+              >
+                Unduh CSV
               </Button>
             </div>
           </div>
-          <div
-            style={{
-              height: '300px',
-              marginTop: '40px',
-            }}
-          >
-            <TrafficChart />
+
+          <div style={{ height: 320 }}>
+            <TrafficChart summary={summary} mode={mode} />
           </div>
-        </CardBody>
-        <CardFooter>
-          <div className="row row-cols-1 row-cols-md-5 text-center">
-            <div className="col mb-sm-2 mb-0">
-              <div className="text-black-50 dark:text-gray-500">{dict.dashboard.traffic.category1}</div>
-              <div className="fw-semibold">
-                29.703
-                {dict.dashboard.traffic.users}
-                {' '}
-                (40%)
-              </div>
-              <ProgressBar
-                className="progress-thin mt-2"
-                variant="success"
-                now={40}
-              />
-            </div>
-            <div className="col mb-sm-2 mb-0">
-              <div className="text-black-50 dark:text-gray-500">{dict.dashboard.traffic.category2}</div>
-              <div className="fw-semibold">
-                24.093
-                {dict.dashboard.traffic.users}
-                {' '}
-                (20%)
-              </div>
-              <ProgressBar
-                className="progress-thin mt-2"
-                variant="info"
-                now={20}
-              />
-            </div>
-            <div className="col mb-sm-2 mb-0">
-              <div className="text-black-50 dark:text-gray-500">{dict.dashboard.traffic.category3}</div>
-              <div className="fw-semibold">
-                78.706
-                {dict.dashboard.traffic.views}
-                {' '}
-                (60%)
-              </div>
-              <ProgressBar
-                className="progress-thin mt-2"
-                variant="warning"
-                now={60}
-              />
-            </div>
-            <div className="col mb-sm-2 mb-0">
-              <div className="text-black-50 dark:text-gray-500">{dict.dashboard.traffic.category4}</div>
-              <div className="fw-semibold">
-                22.123
-                {dict.dashboard.traffic.users}
-                {' '}
-                (80%)
-              </div>
-              <ProgressBar
-                className="progress-thin mt-2"
-                variant="danger"
-                now={80}
-              />
-            </div>
-            <div className="col mb-sm-2 mb-0">
-              <div className="text-black-50 dark:text-gray-500">{dict.dashboard.traffic.category5}</div>
-              <div className="fw-semibold">40.15%</div>
-              <ProgressBar
-                className="progress-thin mt-2"
-                variant="primary"
-                now={40}
-              />
-            </div>
-          </div>
-        </CardFooter>
+        </Card.Body>
+
+        <Card.Footer className="bg-body py-4">
+          <Row className="g-4">
+            <ProgressItem
+              label="Aset Tersedia"
+              count={summary.assets_available}
+              total={summary.assets_total}
+              variant="success"
+            />
+
+            <ProgressItem
+              label="Aset Ditugaskan"
+              count={summary.assets_assigned}
+              total={summary.assets_total}
+              variant="info"
+            />
+
+            <ProgressItem
+              label="Maintenance Menunggu"
+              count={summary.maintenance_pending}
+              total={summary.maintenance_total}
+              variant="warning"
+            />
+
+            <ProgressItem
+              label="Work Orders Selesai"
+              count={summary.work_orders_completed}
+              total={summary.work_orders_total}
+              variant="primary"
+            />
+
+            <ProgressItem
+              label="Vendor Aktif"
+              count={summary.vendors_active}
+              total={summary.vendors_total}
+              variant="danger"
+            />
+          </Row>
+        </Card.Footer>
       </Card>
 
-      <div className="row">
-        <div className="col-sm-6 col-lg-4">
-          <Card
-            className="mb-4"
-            style={{ '--bs-card-cap-bg': '#3b5998' } as React.CSSProperties}
-          >
-            <CardHeader className="d-flex justify-content-center align-items-center">
-              <FontAwesomeIcon
-                icon={faFacebookF}
-                fixedWidth
-                size="3x"
-                className="my-4 text-white"
-              />
-            </CardHeader>
-            <CardBody>
-              <div className="row text-center">
-                <div className="col">
-                  <div className="fs-5 fw-semibold">89k</div>
-                  <div className="text-uppercase text-black-50 dark:text-gray-500 small">
-                    {dict.dashboard.social.facebook.label1}
-                  </div>
-                </div>
-                <div className="vr p-0" />
-                <div className="col">
-                  <div className="fs-5 fw-semibold">459</div>
-                  <div className="text-uppercase text-black-50 dark:text-gray-500 small">
-                    {dict.dashboard.social.facebook.label2}
-                  </div>
-                </div>
-              </div>
-            </CardBody>
+      <Row className="g-3 mb-4">
+        <Col xs={12} md={4}>
+          <Card className="h-100 shadow-sm">
+            <Card.Body className="text-center py-4">
+              <div className="text-body-secondary small mb-2">Total Vendor</div>
+
+              <h2 className="fw-bold">
+                {formatNumber.format(summary.vendors_total)}
+              </h2>
+
+              {canOpenAssets && (
+                <Link href="/dashboard/vendors">Manajemen Vendor</Link>
+              )}
+            </Card.Body>
           </Card>
-        </div>
+        </Col>
 
-        <div className="col-sm-6 col-lg-4">
-          <Card
-            className="mb-4"
-            style={{ '--bs-card-cap-bg': '#00aced' } as React.CSSProperties}
-          >
-            <CardHeader className="d-flex justify-content-center align-items-center">
-              <FontAwesomeIcon
-                icon={faTwitter}
-                fixedWidth
-                size="3x"
-                className="my-4 text-white"
-              />
-            </CardHeader>
-            <CardBody>
-              <div className="row text-center">
-                <div className="col">
-                  <div className="fs-5 fw-semibold">973k</div>
-                  <div className="text-uppercase text-black-50 dark:text-gray-500 small">
-                    {dict.dashboard.social.twitter.label1}
-                  </div>
-                </div>
-                <div className="vr p-0" />
-                <div className="col">
-                  <div className="fs-5 fw-semibold">1.792</div>
-                  <div className="text-uppercase text-black-50 dark:text-gray-500 small">
-                    {dict.dashboard.social.twitter.label2}
-                  </div>
-                </div>
+        <Col xs={12} md={4}>
+          <Card className="h-100 shadow-sm">
+            <Card.Body className="text-center py-4">
+              <div className="text-body-secondary small mb-2">
+                Aset dalam Maintenance
               </div>
-            </CardBody>
+
+              <h2 className="fw-bold">
+                {formatNumber.format(summary.assets_maintenance)}
+              </h2>
+
+              {canOpenAssets && (
+                <Link href="/dashboard/assets">Lihat Aset</Link>
+              )}
+            </Card.Body>
           </Card>
-        </div>
+        </Col>
 
-        <div className="col-sm-6 col-lg-4">
-          <Card
-            className="mb-4"
-            style={{ '--bs-card-cap-bg': '#4875b4' } as React.CSSProperties}
-          >
-            <CardHeader className="d-flex justify-content-center align-items-center">
-              <FontAwesomeIcon
-                icon={faLinkedinIn}
-                fixedWidth
-                size="3x"
-                className="my-4 text-white"
-              />
-            </CardHeader>
-            <CardBody>
-              <div className="row text-center">
-                <div className="col">
-                  <div className="fs-5 fw-semibold">500+</div>
-                  <div className="text-uppercase text-black-50 dark:text-gray-500 small">
-                    {dict.dashboard.social.instagram.label1}
-                  </div>
-                </div>
-                <div className="vr p-0" />
-                <div className="col">
-                  <div className="fs-5 fw-semibold">292</div>
-                  <div className="text-uppercase text-black-50 dark:text-gray-500 small">
-                    {dict.dashboard.social.instagram.label2}
-                  </div>
-                </div>
+        <Col xs={12} md={4}>
+          <Card className="h-100 shadow-sm">
+            <Card.Body className="text-center py-4">
+              <div className="text-body-secondary small mb-2">
+                Work Orders Ditutup
               </div>
-            </CardBody>
+
+              <h2 className="fw-bold">
+                {formatNumber.format(summary.work_orders_closed)}
+              </h2>
+
+              <Link href="/dashboard/work-orders">Lihat Work Orders</Link>
+            </Card.Body>
           </Card>
-        </div>
+        </Col>
+      </Row>
 
-      </div>
+      <Card className="shadow-sm">
+        <Card.Header className="bg-body py-3">
+          <div className="d-flex align-items-center justify-content-between gap-3">
+            <div>
+              <h5 className="fw-semibold mb-1">Work Orders Terbaru</h5>
 
-      <div className="row">
-        <div className="col-md-12">
-          <Card>
-            <CardHeader>
-              {dict.dashboard.sales.title}
-            </CardHeader>
-            <CardBody>
-              <div className="row">
-                <div className="col-sm-6">
-                  <div className="row">
-                    <div className="col-6">
-                      <div className="border-start border-4 border-info px-3 mb-3">
-                        <small className="text-black-50 dark:text-gray-500">
-                          {dict.dashboard.sales.stats.stat1}
-                        </small>
-                        <div className="fs-5 fw-semibold">9,123</div>
-                      </div>
-                    </div>
-
-                    <div className="col-6">
-                      <div className="border-start border-4 border-danger px-3 mb-3">
-                        <small className="text-black-50 dark:text-gray-500">
-                          {dict.dashboard.sales.stats.stat2}
-                        </small>
-                        <div className="fs-5 fw-semibold">22,643</div>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  <hr className="mt-0" />
-
-                  <div className="row mb-4 align-items-center">
-                    <div className="col-3">
-                      <span className="text-black-50 dark:text-gray-500 small">
-                        {dict.dashboard.sales.monday}
-                      </span>
-                    </div>
-                    <div className="col">
-                      <ProgressBar
-                        className="progress-thin mb-1"
-                        variant="primary"
-                        now={34}
-                      />
-                      <ProgressBar
-                        className="progress-thin"
-                        variant="danger"
-                        now={78}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row mb-4 align-items-center">
-                    <div className="col-3">
-                      <span className="text-black-50 dark:text-gray-500 small">
-                        {dict.dashboard.sales.tuesday}
-                      </span>
-                    </div>
-                    <div className="col">
-                      <ProgressBar
-                        className="progress-thin mb-1"
-                        variant="primary"
-                        now={56}
-                      />
-                      <ProgressBar
-                        className="progress-thin"
-                        variant="danger"
-                        now={94}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row mb-4 align-items-center">
-                    <div className="col-3">
-                      <span className="text-black-50 dark:text-gray-500 small">
-                        {dict.dashboard.sales.wednesday}
-                      </span>
-                    </div>
-                    <div className="col">
-                      <ProgressBar
-                        className="progress-thin mb-1"
-                        variant="primary"
-                        now={12}
-                      />
-                      <ProgressBar
-                        className="progress-thin"
-                        variant="danger"
-                        now={67}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row mb-4 align-items-center">
-                    <div className="col-3">
-                      <span className="text-black-50 dark:text-gray-500 small">
-                        {dict.dashboard.sales.thursday}
-                      </span>
-                    </div>
-                    <div className="col">
-                      <ProgressBar
-                        className="progress-thin mb-1"
-                        variant="primary"
-                        now={43}
-                      />
-                      <ProgressBar
-                        className="progress-thin"
-                        variant="danger"
-                        now={91}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row mb-4 align-items-center">
-                    <div className="col-3">
-                      <span className="text-black-50 dark:text-gray-500 small">
-                        {dict.dashboard.sales.friday}
-                      </span>
-                    </div>
-                    <div className="col">
-                      <ProgressBar
-                        className="progress-thin mb-1"
-                        variant="primary"
-                        now={22}
-                      />
-                      <ProgressBar
-                        className="progress-thin"
-                        variant="danger"
-                        now={73}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row mb-4 align-items-center">
-                    <div className="col-3">
-                      <span className="text-black-50 dark:text-gray-500 small">
-                        {dict.dashboard.sales.saturday}
-                      </span>
-                    </div>
-                    <div className="col">
-                      <ProgressBar
-                        className="progress-thin mb-1"
-                        variant="primary"
-                        now={53}
-                      />
-                      <ProgressBar
-                        className="progress-thin"
-                        variant="danger"
-                        now={82}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="row mb-4 align-items-center">
-                    <div className="col-3">
-                      <span className="text-black-50 dark:text-gray-500 small">
-                        {dict.dashboard.sales.sunday}
-                      </span>
-                    </div>
-                    <div className="col">
-                      <ProgressBar
-                        className="progress-thin mb-1"
-                        variant="primary"
-                        now={9}
-                      />
-                      <ProgressBar
-                        className="progress-thin"
-                        variant="danger"
-                        now={69}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-sm-6">
-                  <div className="row">
-                    <div className="col-6">
-                      <div className="border-start border-4 border-warning px-3 mb-3">
-                        <small className="text-black-50 dark:text-gray-500">
-                          {dict.dashboard.sales.stats.stat3}
-                        </small>
-                        <div className="fs-5 fw-semibold">78,623</div>
-                      </div>
-                    </div>
-
-                    <div className="col-6">
-                      <div className="border-start border-4 border-success px-3 mb-3">
-                        <small className="text-black-50 dark:text-gray-500">
-                          {dict.dashboard.sales.stats.stat4}
-                        </small>
-                        <div className="fs-5 fw-semibold">49,123</div>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  <hr className="mt-0" />
-
-                  <div className="mb-5">
-                    <div className="mb-3">
-                      <div className="d-flex mb-1">
-                        <div>
-                          <FontAwesomeIcon className="me-2" icon={faMars} fixedWidth />
-                          {dict.dashboard.sales.male}
-                        </div>
-                        <div className="ms-auto fw-semibold">43%</div>
-                      </div>
-                      <ProgressBar
-                        className="progress-thin"
-                        variant="warning"
-                        now={43}
-                      />
-                    </div>
-
-                    <div className="mb-3">
-                      <div className="d-flex mb-1">
-                        <div>
-                          <FontAwesomeIcon className="me-2" icon={faVenus} fixedWidth />
-                          {dict.dashboard.sales.female}
-                        </div>
-                        <div className="ms-auto fw-semibold">37%</div>
-                      </div>
-                      <ProgressBar
-                        className="progress-thin"
-                        variant="warning"
-                        now={37}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mb-3">
-                    <div className="d-flex mb-1">
-                      <div>
-                        <FontAwesomeIcon className="me-2" icon={faSearch} fixedWidth />
-                        {dict.dashboard.sales.organic}
-                      </div>
-                      <div className="ms-auto fw-semibold me-2">191.235</div>
-                      <div className="text-black-50 dark:text-gray-500 small">(56%)</div>
-                    </div>
-                    <ProgressBar
-                      className="progress-thin"
-                      variant="success"
-                      now={56}
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <div className="d-flex mb-1">
-                      <div>
-                        <FontAwesomeIcon className="me-2" icon={faFacebookF} fixedWidth />
-                        {dict.dashboard.sales.facebook}
-                      </div>
-                      <div className="ms-auto fw-semibold me-2">51.223</div>
-                      <div className="text-black-50 dark:text-gray-500 small">(15%)</div>
-                    </div>
-                    <ProgressBar
-                      className="progress-thin"
-                      variant="success"
-                      now={15}
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <div className="d-flex mb-1">
-                      <div>
-                        <FontAwesomeIcon className="me-2" icon={faTwitter} fixedWidth />
-                        {dict.dashboard.sales.twitter}
-                      </div>
-                      <div className="ms-auto fw-semibold me-2">37.564</div>
-                      <div className="text-black-50 dark:text-gray-500 small">(11%)</div>
-                    </div>
-                    <ProgressBar
-                      className="progress-thin"
-                      variant="success"
-                      now={11}
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <div className="d-flex mb-1">
-                      <div>
-                        <FontAwesomeIcon className="me-2" icon={faLinkedinIn} fixedWidth />
-                        {dict.dashboard.sales.linkedin}
-                      </div>
-                      <div className="ms-auto fw-semibold me-2">27.319</div>
-                      <div className="text-black-50 dark:text-gray-500 small">(8%)</div>
-                    </div>
-                    <ProgressBar
-                      className="progress-thin"
-                      variant="success"
-                      now={8}
-                    />
-                  </div>
-                </div>
+              <div className="text-body-secondary small">
+                Data pekerjaan terbaru dalam sistem
               </div>
+            </div>
 
-              <br />
+            <Link
+              href="/dashboard/work-orders"
+              className="small text-decoration-none"
+            >
+              Lihat Semua
+            </Link>
+          </div>
+        </Card.Header>
 
-              <div className="table-responsive">
-                <table className="table border mb-0">
-                  <thead className="fw-semibold">
-                    <tr className="align-middle table-light dark:table-dark">
-                      <th className="text-center" aria-label="icon">
-                        <FontAwesomeIcon icon={faUsers} fixedWidth />
-                      </th>
-                      <th>{dict.dashboard.listing.headers.header1}</th>
-                      <th>{dict.dashboard.listing.headers.header2}</th>
-                      <th className="text-center">{dict.dashboard.listing.headers.header3}</th>
-                      <th>{dict.dashboard.listing.headers.header4}</th>
-                      <th aria-label="Action" />
+        <Card.Body className="p-0">
+          {recentWorkOrders.length === 0 ? (
+            <p className="p-4 mb-0 text-body-secondary">
+              Belum ada data Work Orders.
+            </p>
+          ) : (
+            <div className="table-responsive">
+              <Table hover className="mb-0 align-middle">
+                <thead>
+                  <tr>
+                    <th className="px-3">Nomor</th>
+                    <th>Aset</th>
+                    <th>Pekerjaan</th>
+                    <th>Status</th>
+                    <th>Teknisi</th>
+                    <th>Dibuat</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {recentWorkOrders.map((item, index) => (
+                    <tr key={`${item.Number}-${index}`}>
+                      <td className="px-3 fw-semibold">{item.Number || "-"}</td>
+
+                      <td>
+                        <div className="fw-semibold">
+                          {item.AssetName || "-"}
+                        </div>
+
+                        <div className="text-body-secondary small">
+                          {item.AssetCode || "-"}
+                        </div>
+                      </td>
+
+                      <td>{item.Title || "-"}</td>
+
+                      <td>
+                        <Badge bg={statusVariant(item.Status)}>
+                          {statusLabel(item.Status)}
+                        </Badge>
+                      </td>
+
+                      <td>{item.TechnicianName || "Belum ditugaskan"}</td>
+
+                      <td className="small">{displayDate(item.CreatedAt)}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="align-middle">
-                      <td className="text-center">
-                        <div className="avatar avatar-md d-inline-flex position-relative">
-                          <Image
-                            fill
-                            sizes="40px"
-                            className="rounded-circle"
-                            src="/assets/img/avatars/1.jpg"
-                            alt="user@email.com"
-                          />
-                          <span
-                            className="avatar-status position-absolute d-block bottom-0 end-0 bg-success rounded-circle border border-white"
-                          />
-                        </div>
-                      </td>
-                      <td>
-                        <div>{dict.dashboard.listing.items.item1.name}</div>
-                        <div className="small text-black-50 dark:text-gray-500">
-                          <span>{dict.dashboard.listing.user_status.new}</span>
-                          {' '}
-                          |
-                          {' '}
-                          {dict.dashboard.listing.registered}
-                          :
-                          {' '}
-                          {dict.dashboard.listing.registered_at}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="clearfix">
-                          <div className="float-start">
-                            <div className="fw-semibold">50%</div>
-                          </div>
-                          <div className="float-end">
-                            <small className="text-black-50 dark:text-gray-500">
-                              {dict.dashboard.listing.usage_duration}
-                            </small>
-                          </div>
-                        </div>
-                        <ProgressBar className="progress-thin" variant="success" now={50} />
-                      </td>
-                      <td className="text-center" aria-label="icon">
-                        <FontAwesomeIcon icon={faCcAmex} size="lg" fixedWidth />
-                      </td>
-                      <td>
-                        <div className="small text-black-50 dark:text-gray-500">{dict.dashboard.listing.last_login}</div>
-                        <div className="fw-semibold">{dict.dashboard.listing.items.item1.login_at}</div>
-                      </td>
-                      <td>
-                        <Dropdown align="end">
-                          <DropdownToggle
-                            as="button"
-                            bsPrefix="btn"
-                            className="btn-link rounded-0 text-black-50 dark:text-gray-500 shadow-none p-0"
-                            id="action-user1"
-                          >
-                            <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                          </DropdownToggle>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </Card.Body>
+      </Card>
 
-                          <DropdownMenu>
-                            <DropdownItem href="#/action-1">{dict.action.info}</DropdownItem>
-                            <DropdownItem href="#/action-2">{dict.action.edit}</DropdownItem>
-                            <DropdownItem
-                              className="text-danger"
-                              href="#/action-3"
-                            >
-                              {dict.action.delete}
-                            </DropdownItem>
-                          </DropdownMenu>
-                        </Dropdown>
-                      </td>
-                    </tr>
-                    <tr className="align-middle">
-                      <td className="text-center">
-                        <div className="avatar avatar-md d-inline-flex position-relative">
-                          <Image
-                            fill
-                            sizes="40px"
-                            className="rounded-circle"
-                            src="/assets/img/avatars/2.jpg"
-                            alt="user@email.com"
-                          />
-                          <span
-                            className="avatar-status position-absolute d-block bottom-0 end-0 bg-danger rounded-circle border border-white"
-                          />
-                        </div>
-                      </td>
-                      <td>
-                        <div>{dict.dashboard.listing.items.item2.name}</div>
-                        <div className="small text-black-50 dark:text-gray-500">
-                          <span>{dict.dashboard.listing.user_status.recurring}</span>
-                          {' '}
-                          |
-                          {' '}
-                          {dict.dashboard.listing.registered}
-                          :
-                          {' '}
-                          {dict.dashboard.listing.registered_at}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="clearfix">
-                          <div className="float-start">
-                            <div className="fw-semibold">10%</div>
-                          </div>
-                          <div className="float-end">
-                            <small className="text-black-50 dark:text-gray-500">
-                              {dict.dashboard.listing.usage_duration}
-                            </small>
-                          </div>
-                        </div>
-                        <ProgressBar className="progress-thin" variant="info" now={10} />
-                      </td>
-                      <td className="text-center" aria-label="icon">
-                        <FontAwesomeIcon icon={faCcVisa} size="lg" fixedWidth />
-                      </td>
-                      <td>
-                        <div className="small text-black-50 dark:text-gray-500">{dict.dashboard.listing.last_login}</div>
-                        <div className="fw-semibold">{dict.dashboard.listing.items.item2.login_at}</div>
-                      </td>
-                      <td>
-                        <Dropdown align="end">
-                          <DropdownToggle
-                            as="button"
-                            bsPrefix="btn"
-                            className="btn-link rounded-0 text-black-50 dark:text-gray-500 shadow-none p-0"
-                            id="action-user2"
-                          >
-                            <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                          </DropdownToggle>
-
-                          <DropdownMenu>
-                            <DropdownItem href="#/action-1">{dict.action.info}</DropdownItem>
-                            <DropdownItem href="#/action-2">{dict.action.edit}</DropdownItem>
-                            <DropdownItem
-                              className="text-danger"
-                              href="#/action-3"
-                            >
-                              {dict.action.delete}
-                            </DropdownItem>
-                          </DropdownMenu>
-                        </Dropdown>
-                      </td>
-                    </tr>
-                    <tr className="align-middle">
-                      <td className="text-center">
-                        <div className="avatar avatar-md d-inline-flex position-relative">
-                          <Image
-                            fill
-                            sizes="40px"
-                            className="rounded-circle"
-                            src="/assets/img/avatars/3.jpg"
-                            alt="user@email.com"
-                          />
-                          <span
-                            className="avatar-status position-absolute d-block bottom-0 end-0 bg-warning rounded-circle border border-white"
-                          />
-                        </div>
-                      </td>
-                      <td>
-                        <div>{dict.dashboard.listing.items.item3.name}</div>
-                        <div className="small text-black-50 dark:text-gray-500">
-                          <span>{dict.dashboard.listing.user_status.new}</span>
-                          {' '}
-                          |
-                          {' '}
-                          {dict.dashboard.listing.registered}
-                          :
-                          {' '}
-                          {dict.dashboard.listing.registered_at}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="clearfix">
-                          <div className="float-start">
-                            <div className="fw-semibold">74%</div>
-                          </div>
-                          <div className="float-end">
-                            <small className="text-black-50 dark:text-gray-500">
-                              {dict.dashboard.listing.usage_duration}
-                            </small>
-                          </div>
-                        </div>
-                        <ProgressBar className="progress-thin" variant="warning" now={74} />
-                      </td>
-                      <td className="text-center" aria-label="icon">
-                        <FontAwesomeIcon icon={faCcStripe} size="lg" fixedWidth />
-                      </td>
-                      <td>
-                        <div className="small text-black-50 dark:text-gray-500">{dict.dashboard.listing.last_login}</div>
-                        <div className="fw-semibold">{dict.dashboard.listing.items.item3.login_at}</div>
-                      </td>
-                      <td>
-                        <Dropdown align="end">
-                          <DropdownToggle
-                            as="button"
-                            bsPrefix="btn"
-                            className="btn-link rounded-0 text-black-50 dark:text-gray-500 shadow-none p-0"
-                            id="action-user3"
-                          >
-                            <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                          </DropdownToggle>
-
-                          <DropdownMenu>
-                            <DropdownItem href="#/action-1">{dict.action.info}</DropdownItem>
-                            <DropdownItem href="#/action-2">{dict.action.edit}</DropdownItem>
-                            <DropdownItem
-                              className="text-danger"
-                              href="#/action-3"
-                            >
-                              {dict.action.delete}
-                            </DropdownItem>
-                          </DropdownMenu>
-                        </Dropdown>
-                      </td>
-                    </tr>
-                    <tr className="align-middle">
-                      <td className="text-center">
-                        <div className="avatar avatar-md d-inline-flex position-relative">
-                          <Image
-                            fill
-                            sizes="40px"
-                            className="rounded-circle"
-                            src="/assets/img/avatars/4.jpg"
-                            alt="user@email.com"
-                          />
-                          <span
-                            className="avatar-status position-absolute d-block bottom-0 end-0 bg-secondary rounded-circle border border-white"
-                          />
-                        </div>
-                      </td>
-                      <td>
-                        <div>{dict.dashboard.listing.items.item4.name}</div>
-                        <div className="small text-black-50 dark:text-gray-500">
-                          <span>{dict.dashboard.listing.user_status.new}</span>
-                          {' '}
-                          |
-                          {' '}
-                          {dict.dashboard.listing.registered}
-                          :
-                          {' '}
-                          {dict.dashboard.listing.registered_at}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="clearfix">
-                          <div className="float-start">
-                            <div className="fw-semibold">98%</div>
-                          </div>
-                          <div className="float-end">
-                            <small className="text-black-50 dark:text-gray-500">
-                              {dict.dashboard.listing.usage_duration}
-                            </small>
-                          </div>
-                        </div>
-                        <ProgressBar className="progress-thin" variant="danger" now={98} />
-                      </td>
-                      <td className="text-center" aria-label="icon">
-                        <FontAwesomeIcon icon={faCcPaypal} size="lg" fixedWidth />
-                      </td>
-                      <td>
-                        <div className="small text-black-50 dark:text-gray-500">{dict.dashboard.listing.last_login}</div>
-                        <div className="fw-semibold">{dict.dashboard.listing.items.item4.login_at}</div>
-                      </td>
-                      <td>
-                        <Dropdown align="end">
-                          <DropdownToggle
-                            as="button"
-                            bsPrefix="btn"
-                            className="btn-link rounded-0 text-black-50 dark:text-gray-500 shadow-none p-0"
-                            id="action-user4"
-                          >
-                            <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                          </DropdownToggle>
-
-                          <DropdownMenu>
-                            <DropdownItem href="#/action-1">{dict.action.info}</DropdownItem>
-                            <DropdownItem href="#/action-2">{dict.action.edit}</DropdownItem>
-                            <DropdownItem
-                              className="text-danger"
-                              href="#/action-3"
-                            >
-                              {dict.action.delete}
-                            </DropdownItem>
-                          </DropdownMenu>
-                        </Dropdown>
-                      </td>
-                    </tr>
-                    <tr className="align-middle">
-                      <td className="text-center">
-                        <div className="avatar avatar-md d-inline-flex position-relative">
-                          <Image
-                            fill
-                            sizes="40px"
-                            className="rounded-circle"
-                            src="/assets/img/avatars/5.jpg"
-                            alt="user@email.com"
-                          />
-                          <span
-                            className="avatar-status position-absolute d-block bottom-0 end-0 bg-success rounded-circle border border-white"
-                          />
-                        </div>
-                      </td>
-                      <td>
-                        <div>{dict.dashboard.listing.items.item5.name}</div>
-                        <div className="small text-black-50 dark:text-gray-500">
-                          <span>{dict.dashboard.listing.user_status.new}</span>
-                          {' '}
-                          |
-                          {' '}
-                          {dict.dashboard.listing.registered}
-                          :
-                          {' '}
-                          {dict.dashboard.listing.registered_at}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="clearfix">
-                          <div className="float-start">
-                            <div className="fw-semibold">22%</div>
-                          </div>
-                          <div className="float-end">
-                            <small className="text-black-50 dark:text-gray-500">
-                              {dict.dashboard.listing.usage_duration}
-                            </small>
-                          </div>
-                        </div>
-                        <ProgressBar className="progress-thin" variant="info" now={22} />
-                      </td>
-                      <td className="text-center" aria-label="icon">
-                        <FontAwesomeIcon icon={faCcApplePay} size="lg" fixedWidth />
-                      </td>
-                      <td>
-                        <div className="small text-black-50 dark:text-gray-500">{dict.dashboard.listing.last_login}</div>
-                        <div className="fw-semibold">{dict.dashboard.listing.items.item5.login_at}</div>
-                      </td>
-                      <td>
-                        <Dropdown align="end">
-                          <DropdownToggle
-                            as="button"
-                            bsPrefix="btn"
-                            className="btn-link rounded-0 text-black-50 dark:text-gray-500 shadow-none p-0"
-                            id="action-user5"
-                          >
-                            <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                          </DropdownToggle>
-
-                          <DropdownMenu>
-                            <DropdownItem href="#/action-1">{dict.action.info}</DropdownItem>
-                            <DropdownItem href="#/action-2">{dict.action.edit}</DropdownItem>
-                            <DropdownItem
-                              className="text-danger"
-                              href="#/action-3"
-                            >
-                              {dict.action.delete}
-                            </DropdownItem>
-                          </DropdownMenu>
-                        </Dropdown>
-                      </td>
-                    </tr>
-                    <tr className="align-middle">
-                      <td className="text-center">
-                        <div className="avatar avatar-md d-inline-flex position-relative">
-                          <Image
-                            fill
-                            sizes="40px"
-                            className="rounded-circle"
-                            src="/assets/img/avatars/6.jpg"
-                            alt="user@email.com"
-                          />
-                          <span
-                            className="avatar-status position-absolute d-block bottom-0 end-0 bg-danger rounded-circle border border-white"
-                          />
-                        </div>
-                      </td>
-                      <td>
-                        <div>{dict.dashboard.listing.items.item6.name}</div>
-                        <div className="small text-black-50 dark:text-gray-500">
-                          <span>{dict.dashboard.listing.user_status.new}</span>
-                          {' '}
-                          |
-                          {' '}
-                          {dict.dashboard.listing.registered}
-                          :
-                          {' '}
-                          {dict.dashboard.listing.registered_at}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="clearfix">
-                          <div className="float-start">
-                            <div className="fw-semibold">43%</div>
-                          </div>
-                          <div className="float-end">
-                            <small className="text-black-50 dark:text-gray-500">
-                              {dict.dashboard.listing.usage_duration}
-                            </small>
-                          </div>
-                        </div>
-                        <ProgressBar className="progress-thin" variant="success" now={43} />
-                      </td>
-                      <td className="text-center" aria-label="icon">
-                        <FontAwesomeIcon icon={faCcAmex} size="lg" fixedWidth />
-                      </td>
-                      <td>
-                        <div className="small text-black-50 dark:text-gray-500">{dict.dashboard.listing.last_login}</div>
-                        <div className="fw-semibold">{dict.dashboard.listing.items.item6.login_at}</div>
-                      </td>
-                      <td>
-                        <Dropdown align="end">
-                          <DropdownToggle
-                            as="button"
-                            bsPrefix="btn"
-                            className="btn-link rounded-0 text-black-50 dark:text-gray-500 shadow-none p-0"
-                            id="action-user6"
-                          >
-                            <FontAwesomeIcon fixedWidth icon={faEllipsisVertical} />
-                          </DropdownToggle>
-
-                          <DropdownMenu>
-                            <DropdownItem href="#/action-1">{dict.action.info}</DropdownItem>
-                            <DropdownItem href="#/action-2">{dict.action.edit}</DropdownItem>
-                            <DropdownItem
-                              className="text-danger"
-                              href="#/action-3"
-                            >
-                              {dict.action.delete}
-                            </DropdownItem>
-                          </DropdownMenu>
-                        </Dropdown>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </CardBody>
-          </Card>
-        </div>
+      <div className="text-body-secondary small mt-3">
+        Sumber: Reports API AssetFlow EAM.
+        {data?.generated_at
+          ? ` Diperbarui: ${displayDate(data.generated_at)}`
+          : ""}
       </div>
     </div>
-  )
+  );
 }

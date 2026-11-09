@@ -1,0 +1,300 @@
+.page {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: clamp(64px, 11vh, 112px) 20px 48px;
+    background:
+        linear-gradient(180deg,
+            #edf1f6 0,
+            #edf1f6 220px,
+            #f8fafc 220px,
+            #f8fafc 100%);
+    color: #1f2937;
+    color-scheme: light;
+}
+
+.shell {
+    width: 100%;
+    max-width: 440px;
+}
+
+.card {
+    overflow: hidden;
+    border: 1px solid #dce3eb;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow:
+        0 12px 35px rgba(15, 23, 42, 0.05),
+        0 2px 6px rgba(15, 23, 42, 0.03);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 22px 26px;
+    background: #f3f5f8;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.brandLogo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 54px;
+    height: 54px;
+    border-radius: 11px;
+    background: linear-gradient(135deg,
+            #183b86,
+            #3169e5);
+    color: #ffffff;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.brandCopy {
+    min-width: 0;
+}
+
+.brand {
+    margin: 0;
+    color: #172b4d;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    line-height: 1.2;
+}
+
+.brandDescription {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.brandTagline {
+    margin-top: 3px;
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.cardBody {
+    padding: 28px 32px 30px;
+}
+
+.formTitle {
+    margin: 0;
+    color: #1e293b;
+    font-size: 23px;
+    font-weight: 750;
+    letter-spacing: -0.6px;
+    line-height: 1.25;
+}
+
+.formSubtitle {
+    margin: 9px 0 25px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.cardBody :global(.form-label) {
+    display: block;
+    margin-bottom: 8px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.cardBody :global(.form-control) {
+    min-height: 47px;
+    padding: 11px 14px;
+    border: 1px solid #dce3eb;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 14px;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.cardBody :global(.form-control::placeholder) {
+    color: #9aa7b7;
+}
+
+.cardBody :global(.form-control:focus) {
+    border-color: #2563eb;
+    background: #ffffff;
+    color: #1e293b;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    outline: none;
+}
+
+.cardBody :global(.form-check) {
+    margin-top: 12px;
+}
+
+.cardBody :global(.form-check-label) {
+    color: #64748b;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.cardBody :global(.form-check-input) {
+    border-color: #cbd5e1;
+    cursor: pointer;
+}
+
+.cardBody :global(.form-check-input:checked) {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+.cardBody :global(button[type="submit"]) {
+    display: block;
+    width: auto !important;
+    min-width: 140px;
+    min-height: 43px;
+    margin-left: auto;
+    padding: 10px 20px;
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: none;
+    transition:
+        background-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.cardBody :global(button[type="submit"]:hover) {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+.cardBody :global(button[type="submit"]:disabled) {
+    opacity: 0.65;
+    transform: none;
+    cursor: not-allowed;
+}
+
+.cardBody :global(.alert) {
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.cardBody :global(form p.text-center) {
+    margin-top: 22px !important;
+    font-size: 11px;
+    color: #94a3b8 !important;
+}
+
+.cardFooter {
+    padding: 20px 25px;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    text-align: center;
+}
+
+.footerText {
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.footerText a {
+    color: #2563eb;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.footerText a:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.footerDivider {
+    width: 36px;
+    height: 1px;
+    margin: 14px auto;
+    background: #dbe3ed;
+}
+
+.backLink {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    color: #64748b;
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.backLink:hover {
+    color: #2563eb;
+}
+
+.footerCopyright {
+    margin-top: 22px;
+    color: #94a3b8;
+    font-size: 11px;
+    text-align: center;
+    line-height: 1.6;
+}
+
+@media (max-width: 575.98px) {
+    .page {
+        padding: 36px 14px;
+        background: #f8fafc;
+    }
+
+    .shell {
+        max-width: 100%;
+    }
+
+    .cardHeader {
+        padding: 20px;
+    }
+
+    .brandLogo {
+        width: 48px;
+        height: 48px;
+        font-size: 17px;
+    }
+
+    .brand {
+        font-size: 19px;
+    }
+
+    .brandDescription {
+        font-size: 10px;
+    }
+
+    .cardBody {
+        padding: 25px 22px;
+    }
+
+    .formTitle {
+        font-size: 21px;
+    }
+
+    .cardBody :global(button[type="submit"]) {
+        width: 100% !important;
+    }
+
+    .cardFooter {
+        padding: 18px;
+    }
+}
