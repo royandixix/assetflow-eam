@@ -1,282 +1,410 @@
+
 # AssetFlow EAM
 
-### Sistem Manajemen Aset Perusahaan Berbasis Web
+### Enterprise Asset Management System
 
-**AssetFlow EAM (Enterprise Asset Management)** merupakan aplikasi manajemen aset perusahaan berbasis web yang dirancang untuk mendukung pencatatan, pengelolaan, pemantauan, dan pemeliharaan aset secara terpusat.
+AssetFlow EAM adalah sistem informasi manajemen aset perusahaan berbasis web yang dirancang untuk mendukung pengelolaan inventaris, penugasan aset, mutasi, pemeliharaan, work orders, vendor, dan pemantauan operasional melalui satu platform terintegrasi.
 
-Sistem dikembangkan menggunakan arsitektur **Full-Stack Web Application** dengan teknologi **Next.js, React, TypeScript, Go, Gin, PostgreSQL, dan Supabase**.
-
-Aplikasi ini mengintegrasikan pengelolaan data aset, kategori, lokasi, departemen, penugasan aset, perpindahan aset, laporan kerusakan, serta pengelolaan pekerjaan teknisi melalui mekanisme akses berbasis peran pengguna.
-
-> **Status Proyek:** Dalam tahap pengembangan aktif (*Active Development*). Sejumlah modul telah diimplementasikan, sedangkan integrasi lanjutan, pengujian hak akses, dan penyempurnaan sistem masih berlangsung.
+Sistem dikembangkan menggunakan Next.js dan TypeScript pada frontend, Go dengan framework Gin pada backend, serta PostgreSQL melalui Supabase sebagai penyimpanan data.
 
 ---
 
-## 1. Gambaran Umum
+## Overview
 
-AssetFlow EAM dikembangkan sebagai sistem informasi untuk membantu organisasi mengelola aset operasional dalam satu platform.
+AssetFlow EAM membantu organisasi mengelola siklus operasional aset secara terstruktur, mulai dari pencatatan hingga pemantauan dan pemeliharaan.
 
-Pengembangan sistem berfokus pada keterhubungan data aset dengan struktur organisasi, pencatatan penggunaan aset, pelaporan kerusakan, dan proses penanganan pemeliharaan.
+Arsitektur aplikasi memisahkan antarmuka pengguna, layanan API, autentikasi, dan database agar setiap komponen dapat dikembangkan serta dipelihara secara independen.
 
-Dengan pendekatan aplikasi web, pengelolaan aset dapat dilakukan melalui antarmuka terpusat yang terhubung dengan backend REST API serta database PostgreSQL.
+### Core Capabilities
 
-## 2. Teknologi yang Digunakan
+- Centralized Asset Management
+- Asset Assignment & Transfer Management
+- Maintenance Request Management
+- Work Order Management
+- Vendor Management
+- Operational Reporting
+- Audit Trail
+- Role-Based Access Control
 
-| Komponen | Teknologi |
+## Technology Stack
+
+| Layer | Technology |
 |---|---|
-| Frontend | Next.js 16, React 19, TypeScript |
-| UI Framework | React Bootstrap |
-| Backend | Go (Golang), Gin Framework |
+| Frontend | Next.js 16, React, TypeScript |
+| UI Framework | CoreUI, React Bootstrap |
+| Styling | CSS Modules, Bootstrap |
+| Data Visualization | Chart.js |
+| Backend | Go, Gin Framework |
 | Database | PostgreSQL |
+| Database Platform | Supabase |
 | Authentication | Supabase Auth |
+| API Architecture | REST API |
 | Database Driver | pgx / pgxpool |
-| API | REST API |
-| Pengembangan | macOS, Visual Studio Code |
-| Version Control | Git & GitHub |
+| Development Environment | macOS, VS Code |
 
-### Arsitektur Sistem
+## System Features
 
-Sistem menerapkan pemisahan antara frontend, backend, layanan autentikasi, dan database.
+### 1. Asset Management
 
-```text
-                  PENGGUNA
-                      |
-                      v
-           FRONTEND APPLICATION
-        Next.js + React + TypeScript
-                      |
-                      v
-                 REST API
-                Go + Gin
-                      |
-          +-----------+-----------+
-          |                       |
-          v                       v
-    SUPABASE AUTH           POSTGRESQL
-    Autentikasi             Penyimpanan
-    dan Identitas           Data Sistem
-```
+Pengelolaan data aset dalam sistem terpusat.
 
-Frontend bertanggung jawab menyediakan antarmuka pengguna, sedangkan backend menangani proses bisnis, validasi, otorisasi, dan komunikasi database.
+Fitur meliputi:
 
-## 3. Modul Aplikasi
-
-### A. Manajemen Aset
-
-Modul manajemen aset mencakup:
-
-- Pengelolaan data aset.
-- Pengelolaan kategori aset.
+- Pencatatan dan pengelolaan aset.
+- Pengelompokan kategori aset.
 - Pengelolaan lokasi aset.
 - Pengelolaan departemen.
-- Pencatatan penugasan aset.
-- Pengembalian aset.
-- Pengelolaan perpindahan aset.
+- Pemantauan status aset.
 
-### B. Maintenance Management
+### 2. Asset Assignment
 
-Modul pemeliharaan aset mendukung proses pelaporan kerusakan dan verifikasi laporan.
+Pengelolaan penugasan aset kepada pengguna atau unit yang bertanggung jawab.
 
-Fitur yang telah diimplementasikan mencakup:
+### 3. Asset Transfer
 
-- Pengajuan laporan kerusakan aset.
-- Pencatatan informasi kerusakan.
-- Pemeriksaan laporan Maintenance.
-- Persetujuan atau penolakan laporan.
-- Pemantauan status laporan.
+Pencatatan perpindahan aset antar lokasi atau penanggung jawab, termasuk informasi dan status mutasi.
 
-### C. Work Order Management
+### 4. Maintenance Management
 
-Modul Work Order digunakan untuk mengelola pekerjaan pemeliharaan berdasarkan laporan yang telah disetujui.
+Pengelolaan permintaan pemeliharaan aset dan pemantauan tindak lanjut pekerjaan.
 
-Fungsi yang dikembangkan mencakup:
+### 5. Work Order Management
 
-- Pembuatan Work Order dari laporan Maintenance.
-- Pemilihan teknisi yang bertanggung jawab.
-- Pencatatan pekerjaan pemeliharaan.
-- Perubahan status pekerjaan.
-- Penyelesaian dan penutupan Work Order.
+Pengelolaan pekerjaan teknisi, penugasan, perkembangan status, dan penyelesaian pekerjaan pemeliharaan.
 
-Pengujian integrasi penugasan teknisi dan pembatasan akses berdasarkan peran masih berlangsung.
+### 6. Vendor Management
 
-### D. User & Role Management
+Pengelolaan informasi vendor yang mendukung kebutuhan operasional perusahaan.
 
-Sistem menggunakan Supabase Authentication dan data profil pengguna untuk mengelola identitas serta hak akses.
+### 7. Operational Dashboard
 
-Terdapat lima peran pengguna:
+Dashboard menggunakan komponen CoreUI dan visualisasi Chart.js untuk menampilkan ringkasan operasional.
 
-| Role | Tanggung Jawab |
+Data ringkasan bersumber dari API Reports, bukan angka contoh template.
+
+### 8. Reports
+
+Penyajian informasi operasional untuk mendukung monitoring dan evaluasi pengelolaan aset.
+
+Termasuk ringkasan aset, maintenance, work orders, dan vendor serta fitur ekspor laporan sesuai endpoint yang tersedia.
+
+### 9. Audit Trail
+
+Pencatatan aktivitas perubahan melalui middleware backend untuk mendukung penelusuran aktivitas operasional.
+
+Audit Trail mencatat operasi yang didukung sistem, termasuk aktivitas perubahan data pada modul terkait.
+
+### 10. Application Settings
+
+Pengaturan aplikasi meliputi identitas organisasi, informasi kontak, zona waktu, dan format tanggal.
+
+Pengaturan tampilan dan keamanan akun dikelola melalui modul pengaturan pengguna.
+
+### 11. Public Landing Page
+
+Halaman beranda publik dilengkapi dengan:
+
+- Tampilan enterprise responsif.
+- Informasi produk dan modul sistem.
+- Fotografi industri.
+- Animasi scroll dan micro-interactions.
+- Eksplorasi alur operasional interaktif.
+- Navigasi menuju halaman autentikasi.
+
+## User Roles
+
+AssetFlow EAM menggunakan lima peran pengguna.
+
+| Role | Responsibilities |
 |---|---|
-| SUPER_ADMIN | Pengelolaan dan administrasi sistem |
-| ASSET_ADMIN | Pengelolaan operasional aset |
-| MANAGER | Pengawasan dan proses manajerial |
-| TECHNICIAN | Pelaksanaan tugas pemeliharaan |
-| STAFF | Penggunaan fitur operasional sesuai kewenangan |
+| SUPER_ADMIN | Administrasi sistem dan pengelolaan pengguna |
+| ASSET_ADMIN | Pengelolaan aset dan operasional aset |
+| MANAGER | Pemantauan laporan dan operasional |
+| TECHNICIAN | Pelaksanaan pekerjaan pemeliharaan |
+| STAFF | Aktivitas operasional berdasarkan izin |
 
-Sistem menerapkan pendekatan **Role-Based Access Control (RBAC)** untuk membatasi akses sesuai peran pengguna.
+Hak akses setiap endpoint ditentukan melalui middleware dan aturan otorisasi backend.
 
-Sebagian pengujian otorisasi dan proses undangan pengguna masih dalam tahap penyempurnaan.
+Role pada database tidak dengan sendirinya memberikan akses ke semua fitur.
 
-## 4. Struktur Proyek
+## System Architecture
 
-AssetFlow EAM menggunakan struktur repository Full-Stack dengan pemisahan frontend, backend, dan migrasi database.
+```text
+User / Web Browser
+        |
+        v
+Next.js Frontend
+        |
+        +---- Public Landing Page
+        |
+        +---- Authentication
+        |
+        +---- Dashboard & Operational Modules
+        |
+        v
+Next.js API Routes
+        |
+        | Authenticated API Requests
+        v
+Go REST API (Gin)
+        |
+        +---- Authentication Middleware
+        |
+        +---- Authorization / Role Validation
+        |
+        +---- Business Logic
+        |
+        +---- Audit Logging
+        |
+        v
+PostgreSQL Database
+        |
+        +---- Asset Data
+        +---- Assignment & Transfer Data
+        +---- Maintenance Data
+        +---- Work Orders
+        +---- Vendors
+        +---- User Profiles
+        +---- Application Settings
+
+Supabase Auth
+        |
+        +---- Authentication Sessions
+        +---- User Identity
+```
+
+## Project Structure
 
 ```text
 assetflow-eam/
+|
+├── frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── api/
+│   │   │   ├── dashboard/
+│   │   │   ├── login/
+│   │   │   ├── register/
+│   │   │   ├── page.tsx
+│   │   │   └── home.module.css
+│   │   |
+│   │   ├── components/
+│   │   │   ├── Layout/
+│   │   │   ├── auth/
+│   │   │   ├── home/
+│   │   │   └── page/
+│   │   |
+│   │   ├── lib/
+│   │   └── locales/
+│   |
+│   └── package.json
+|
 ├── backend/
 │   ├── cmd/
+│   │   └── api/
+│   |
 │   ├── internal/
-│   │   ├── auth/
-│   │   ├── config/
-│   │   ├── database/
 │   │   ├── middleware/
 │   │   ├── modules/
 │   │   └── router/
-│   └── go.mod
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── app/
-│   │   ├── components/
-│   │   └── lib/
-│   └── package.json
+│   |
+│   ├── go.mod
+│   └── go.sum
+|
 ├── supabase/
 │   └── migrations/
-├── .gitignore
+|
 └── README.md
 ```
 
-## 5. Cara Menjalankan Aplikasi
+## Getting Started
 
-### Persyaratan
+### Prerequisites
 
-Sebelum menjalankan proyek, pastikan lingkungan pengembangan telah menyediakan:
+Siapkan perangkat pengembangan dengan:
 
-- Node.js dan npm.
-- Go (Golang).
-- Proyek Supabase.
-- Koneksi PostgreSQL.
-- Visual Studio Code atau editor kode lainnya.
+- Node.js dan npm yang kompatibel dengan versi Next.js proyek.
+- Go sesuai versi yang ditentukan dalam `backend/go.mod`.
+- PostgreSQL / proyek Supabase.
+- Git.
+- VS Code atau editor kode lainnya.
 
-### Menjalankan Backend
-
-Masuk ke direktori backend:
+### Clone Repository
 
 ```bash
-cd backend
+git clone <REPOSITORY_URL>
+cd assetflow-eam
 ```
 
-Jalankan aplikasi:
+Ganti `<REPOSITORY_URL>` dengan URL repository GitHub.
 
-```bash
-go run ./cmd/api
-```
-
-Alamat backend pada lingkungan pengembangan:
-
-```text
-http://127.0.0.1:8083
-```
-
-### Menjalankan Frontend
-
-Buka Terminal baru dan masuk ke direktori frontend:
+### Frontend Installation
 
 ```bash
 cd frontend
+npm ci
 ```
 
-Instal dependensi:
+Gunakan `npm install` apabila proyek belum mempunyai `package-lock.json`.
+
+### Backend Installation
+
+Buka Terminal terpisah:
 
 ```bash
-npm install
+cd backend
+go mod download
 ```
 
-Jalankan server pengembangan:
+### Environment Configuration
+
+Aplikasi memerlukan variabel lingkungan untuk konfigurasi Supabase, API backend, dan koneksi database.
+
+Frontend menggunakan konfigurasi Supabase Auth serta URL backend yang ditentukan pada konfigurasi proyek.
+
+Contoh variabel frontend:
+
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-public-key
+ASSETFLOW_API_URL=http://127.0.0.1:8083
+```
+
+Nama variabel harus disesuaikan dengan implementasi konfigurasi yang digunakan oleh source code.
+
+Konfigurasi backend mengikuti environment yang dibaca oleh layanan Go dan pengaturan koneksi database.
+
+Jangan menyimpan database password, service-role key, access token, atau informasi rahasia lainnya di repository.
+
+### Database Setup
+
+Database menggunakan PostgreSQL.
+
+File migrasi yang tersedia berada dalam:
+
+```text
+supabase/migrations/
+```
+
+Terapkan migrasi yang sesuai pada database pengembangan menggunakan proses migrasi proyek.
+
+Hindari menjalankan migrasi langsung pada database production tanpa backup dan pemeriksaan dampak.
+
+### Run Backend
 
 ```bash
+cd backend
+go run ./cmd/api
+```
+
+Alamat backend mengikuti konfigurasi server Go.
+
+### Run Frontend
+
+```bash
+cd frontend
 npm run dev
 ```
 
-Akses aplikasi melalui browser:
+Pada lingkungan pengembangan AssetFlow EAM, frontend digunakan melalui:
 
 ```text
 http://localhost:3001
 ```
 
-### Konfigurasi Environment
+Port aktual dapat berbeda mengikuti konfigurasi dan output Terminal.
 
-Aplikasi membutuhkan konfigurasi environment untuk menghubungkan frontend, backend, database, dan layanan autentikasi.
+## Application Routes
 
-Contoh konfigurasi frontend:
+| Route | Description |
+|---|---|
+| `/` | Public landing page |
+| `/login` | User authentication |
+| `/register` | Registration interface |
+| `/dashboard` | Operational dashboard |
+| `/dashboard/assets` | Asset management |
+| `/dashboard/assignments` | Asset assignments |
+| `/dashboard/transfers` | Asset transfers |
+| `/dashboard/maintenance` | Maintenance management |
+| `/dashboard/work-orders` | Work order management |
+| `/dashboard/vendors` | Vendor management |
+| `/dashboard/reports` | Operational reports |
+| `/dashboard/notifications` | Notification interface |
+| `/dashboard/users` | User administration |
+| `/dashboard/settings` | Application settings |
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
-ASSETFLOW_API_URL=http://127.0.0.1:8083
+Sebagian halaman memerlukan autentikasi serta role tertentu.
+
+## Testing and Validation
+
+### Frontend
+
+```bash
+cd frontend
+
+npx next typegen
+npx tsc --noEmit
+npx eslint .
+npm run build
 ```
 
-Konfigurasi backend memerlukan pengaturan database dan Supabase sesuai kebutuhan sistem.
+### Backend
 
-**Catatan keamanan:** File `.env`, connection string yang memuat password, dan API key rahasia tidak boleh dipublikasikan ke repository.
+```bash
+cd backend
 
-## 6. Keamanan Sistem
+go test ./...
+go vet ./...
+```
 
-Pengembangan AssetFlow EAM memperhatikan beberapa aspek keamanan aplikasi, antara lain:
+Pemeriksaan ini digunakan untuk validasi tipe, kualitas kode, kompilasi, dan pengujian backend yang tersedia.
 
-- Autentikasi pengguna menggunakan Supabase Auth.
-- Pengelolaan hak akses berbasis role.
-- Validasi akses melalui backend API.
-- Pemisahan kredensial dari source code.
-- Penggunaan koneksi database yang aman.
-- Pembatasan fitur administratif berdasarkan kewenangan.
+Keberhasilan build tidak menggantikan pengujian fungsional, integrasi, dan keamanan.
 
-Evaluasi keamanan dan pengujian lanjutan tetap diperlukan sebelum sistem digunakan secara publik.
+## Security Considerations
 
-## 7. Rencana Pengembangan
+Aplikasi menggunakan autentikasi dan sistem role untuk mengatur akses pengguna.
 
-Pengembangan berikutnya meliputi:
+Praktik keamanan yang perlu dipertahankan:
 
-- Penyempurnaan integrasi Work Order dan penugasan teknisi.
-- Pengembangan Preventive Maintenance.
-- Pengembangan Inventory & Vendor Management.
-- Implementasi laporan operasional.
-- Sistem notifikasi.
-- Audit Trail aktivitas pengguna.
-- Integrasi dashboard dengan data operasional sebenarnya.
-- Pengujian sistem dan penyempurnaan keamanan.
-- Persiapan deployment.
+- Tidak menyimpan credential di source code.
+- Menjaga Supabase service-role key tetap di sisi server.
+- Menggunakan middleware autentikasi pada endpoint privat.
+- Memvalidasi izin pengguna melalui backend.
+- Menghindari registrasi publik tanpa proses persetujuan.
+- Melakukan pengujian keamanan sebelum deployment production.
+- Menggunakan Audit Trail untuk mendukung pelacakan aktivitas.
 
-## 8. Status Implementasi
+## Development Notes
 
-| Modul | Status |
-|---|---|
-| Manajemen Kategori Aset | Diimplementasikan |
-| Manajemen Lokasi | Diimplementasikan |
-| Manajemen Departemen | Diimplementasikan |
-| Manajemen Data Aset | Diimplementasikan |
-| Penugasan dan Pengembalian Aset | Diimplementasikan |
-| Perpindahan Aset | Diimplementasikan |
-| Maintenance Management | Diimplementasikan |
-| Work Order Management | Pengujian integrasi |
-| User & Role Management | Pengujian integrasi |
-| Preventive Maintenance | Direncanakan |
-| Inventory & Vendor | Direncanakan |
-| Reports & Notifications | Direncanakan |
-| Audit Trail | Direncanakan |
+Landing page dan Dashboard merupakan dua bagian berbeda.
 
-Status tersebut menunjukkan perkembangan implementasi modul, bukan hasil pengujian akhir atau pernyataan bahwa sistem sudah siap digunakan pada lingkungan produksi.
+Landing page digunakan sebagai halaman informasi publik, sedangkan Dashboard dan modul operasional digunakan oleh pengguna yang telah melalui proses autentikasi.
 
-## 9. Tentang Pengembang
+Pengembangan tampilan tidak mengubah mekanisme penyimpanan data dan otorisasi backend.
 
-**Royandi Randi**
+## Further Improvements
 
-Software Engineer | Full-Stack Web Developer
+Beberapa peningkatan yang dapat dikembangkan:
 
-Pengembangan proyek ini berfokus pada implementasi aplikasi web dengan arsitektur frontend dan backend terpisah, integrasi database, autentikasi pengguna, pengelolaan proses bisnis, serta pengembangan REST API.
+- Automated integration testing.
+- End-to-end role permission testing.
+- CI/CD pipeline.
+- Monitoring dan observability.
+- Penyempurnaan pengaturan tema.
+- Penyempurnaan notifikasi.
+- Peningkatan perlindungan dan integritas Audit Trail.
 
-**GitHub:** [github.com/royandixix](https://github.com/royandixix)
+## Author
 
----
+**Royandi**
 
-**AssetFlow EAM** — Pengembangan Sistem Manajemen Aset Perusahaan yang Terintegrasi, Terstruktur, dan Berbasis Web.
+Software Engineer / Web Developer
+
+GitHub: https://github.com/royandixix
+
+## License
+
+Lisensi penggunaan dan distribusi proyek belum ditetapkan.
+
+Seluruh kode tetap tunduk pada hak cipta masing-masing pemiliknya. Penggunaan ulang atau distribusi oleh pihak lain memerlukan izin yang sesuai.

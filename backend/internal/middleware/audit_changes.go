@@ -22,7 +22,8 @@ var auditChangesResources = map[string]bool{
 	"work-orders":          true,
 	"users":                true,
 	"vendors":              true,
-	"settings": 			true,
+	"settings":             true,
+	"user-preferences":     true,
 }
 
 func auditChangesResource(route string) string {

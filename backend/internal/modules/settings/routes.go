@@ -12,13 +12,19 @@ func RegisterRoutes(
 	db *pgxpool.Pool,
 ) {
 	h := &Handler{db: db}
+	preferences := &PreferencesHandler{db: db}
 
-	group := protected.Group("/settings")
+	settingsGroup := protected.Group("/settings")
 
-	group.Use(
+	settingsGroup.Use(
 		middleware.RequireRoles("SUPER_ADMIN"),
 	)
 
-	group.GET("", h.Get)
-	group.PUT("", h.Update)
+	settingsGroup.GET("", h.Get)
+	settingsGroup.PUT("", h.Update)
+
+	preferencesGroup := protected.Group("/user-preferences")
+
+	preferencesGroup.GET("", preferences.Get)
+	preferencesGroup.PUT("", preferences.Update)
 }

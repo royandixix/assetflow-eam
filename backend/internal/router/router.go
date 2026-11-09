@@ -15,6 +15,7 @@ import (
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/assignments"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/audittrail"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/categories"
+	"github.com/royandixix/assetflow-eam/backend/internal/modules/dashboard"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/departments"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/locations"
 	"github.com/royandixix/assetflow-eam/backend/internal/modules/maintenance"
@@ -91,6 +92,7 @@ func New(db *pgxpool.Pool, authClient *auth.Client) *gin.Engine {
 	reports.RegisterRoutes(protected, db)
 	audittrail.RegisterRoutes(protected, db)
 	settings.RegisterRoutes(protected, db)
+	dashboard.RegisterRoutes(protected, db)
 
 	protected.GET("/auth/me", func(c *gin.Context) {
 		identity, _ := middleware.CurrentIdentity(c)
