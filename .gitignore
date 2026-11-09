@@ -2,71 +2,65 @@
 # Environment and secrets
 .env
 .env.*
+**/.env
+**/.env.*
+
 !.env.example
-!.env.*.example
+!.env.sample
+!**/.env.example
+!**/.env.sample
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.vercel/
+
+# Build outputs
+bin/
+tmp/
+*.log
+
+# Credentials
 *.pem
 *.p12
 *.pfx
 *.key
 
-# Next.js and Node.js
-node_modules/
-.next/
-.turbo/
-out/
-dist/
-coverage/
-*.tsbuildinfo
-
-# Go
-bin/
-*.exe
-*.test
-*.out
-
-# Local files
-.DS_Store
-*.log
-.vscode/
-.idea/
-
-# Local database and backups
-*.dump
-*.backup
+# Local database
 *.sqlite
 *.sqlite3
 *.db
-*.zip
-*.tar.gz
 
-# Local Supabase state
-supabase/.temp/
-supabase/.branches/
-
-# Local uploads
-uploads/
-
-# Local configuration - review examples before publication
-.env*
-
-# Compiled Go application
-/backend/api
-/backend/bin/
+# macOS / Editors
+.DS_Store
+.idea/
+.vscode/
 
 # Local backups
 .crud-backups/
-frontend/.layout-backup/
+.layout-backup/
+*.backup
 *.backup-*
 *.bak
 *.bak-*
 *.broken.bak
 
-# Local audit results
-assetflow_frontend_audit.txt
+# Local build outputs
+/backend/api
+*.tsbuildinfo
 
-# Supabase local state
-supabase/.temp/
-supabase/.branches/
+# Local audit output
+/assetflow_frontend_audit.txt
 
-# macOS
-.DS_Store
+# Secrets
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Safe environment templates
+!.env.example
+!**/.env.example
