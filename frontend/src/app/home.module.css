@@ -1197,3 +1197,161 @@
         transition: none !important;
     }
 }
+.scrollProgress {
+    position: fixed;
+    z-index: 200;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: #ffb43e;
+    transform: scaleX(0);
+    transform-origin: left center;
+    pointer-events: none;
+    will-change: transform;
+}
+
+.page[data-motion-enabled="true"] [data-reveal] {
+    transition:
+        opacity 650ms cubic-bezier(0.2, 0.65, 0.3, 1),
+        transform 650ms cubic-bezier(0.2, 0.65, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+}
+
+.page[data-motion-enabled="true"] [data-reveal="pending"] {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+}
+
+.page[data-motion-enabled="true"] [data-reveal="visible"] {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+}
+
+.page[data-motion-enabled="true"] .heroContent>* {
+    animation: homeHeroRise 680ms both;
+}
+
+.page[data-motion-enabled="true"] .heroContent> :nth-child(1) {
+    animation-delay: 40ms;
+}
+
+.page[data-motion-enabled="true"] .heroContent> :nth-child(2) {
+    animation-delay: 120ms;
+}
+
+.page[data-motion-enabled="true"] .heroContent> :nth-child(3) {
+    animation-delay: 200ms;
+}
+
+.page[data-motion-enabled="true"] .heroContent> :nth-child(4) {
+    animation-delay: 280ms;
+}
+
+.page[data-motion-enabled="true"] .heroContent> :nth-child(5) {
+    animation-delay: 360ms;
+}
+
+.page .featureCard {
+    position: relative;
+    overflow: hidden;
+}
+
+.page .featureCard::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 3px;
+    background: #e7a33a;
+    transition: width 350ms ease;
+}
+
+.page .featureCard:hover::before {
+    width: 100%;
+}
+
+.page .featureCard:hover {
+    transform: translateY(-3px);
+    border-color: #bfd0e0;
+    box-shadow: 0 13px 30px rgba(24, 41, 62, 0.07);
+}
+
+.page[data-motion-enabled="true"] .featureCard[data-reveal="visible"]:hover {
+    transform: translateY(-3px);
+}
+
+.page .primaryButton svg,
+.page .headerButton svg,
+.page .darkButton svg,
+.page .textLink svg {
+    transition: transform 200ms ease;
+}
+
+.page .primaryButton:hover svg,
+.page .headerButton:hover svg,
+.page .darkButton:hover svg,
+.page .textLink:hover svg {
+    transform: translateX(4px);
+}
+
+.page .desktopNav a {
+    position: relative;
+}
+
+.page .desktopNav a::after {
+    content: "";
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    bottom: 5px;
+    height: 2px;
+    background: #ffb43e;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 220ms ease;
+}
+
+.page .desktopNav a:hover::after,
+.page .desktopNav a:focus-visible::after {
+    transform: scaleX(1);
+}
+
+.page .heroBackdrop {
+    transition: transform 1.2s ease;
+}
+
+@keyframes homeHeroRise {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page[data-motion-enabled="true"] [data-reveal] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .page[data-motion-enabled="true"] .heroContent>* {
+        animation: none;
+    }
+
+    .page .featureCard,
+    .page .featureCard::before,
+    .page .primaryButton svg,
+    .page .headerButton svg,
+    .page .darkButton svg,
+    .page .textLink svg,
+    .page .desktopNav a::after {
+        transition: none;
+    }
+}

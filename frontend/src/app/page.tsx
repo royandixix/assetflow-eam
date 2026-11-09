@@ -20,6 +20,9 @@ import {
   faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 
+import HomeMotion from "@/components/home/HomeMotion";
+import HomeExplorer from "@/components/home/HomeExplorer";
+
 import styles from "./home.module.css";
 
 type Feature = {
@@ -148,7 +151,9 @@ function Arrow() {
 
 export default function HomePage() {
   return (
-    <div className={styles.page} id="beranda">
+    <div className={styles.page} id="beranda" data-assetflow-home>
+      <HomeMotion />
+
       <a href="#konten" className={styles.skipLink}>
         Langsung ke konten
       </a>
@@ -205,6 +210,7 @@ export default function HomePage() {
               <nav aria-label="Navigasi mobile">
                 <a href="#beranda">Beranda</a>
                 <a href="#fitur">Fitur</a>
+                <a href="#jelajahi">Eksplorasi</a>
                 <a href="#solusi">Solusi</a>
                 <a href="#alur-kerja">Alur Kerja</a>
                 <a href="#hak-akses">Hak Akses</a>
@@ -358,13 +364,23 @@ export default function HomePage() {
 
                   <div className={styles.featureFooter}>
                     <span>Modul AssetFlow EAM</span>
+
                     <FontAwesomeIcon icon={faArrowRight} />
                   </div>
                 </article>
               ))}
             </div>
+
+            <div className="text-center mt-4">
+              <a href="#jelajahi" className={styles.textLink}>
+                Jelajahi alur operasional
+                <Arrow />
+              </a>
+            </div>
           </div>
         </section>
+
+        <HomeExplorer />
 
         <section className={styles.solutionSection} id="solusi">
           <div className={styles.container}>
@@ -383,6 +399,7 @@ export default function HomePage() {
 
                   <div>
                     <strong>Operational Excellence</strong>
+
                     <span>Asset Lifecycle Management</span>
                   </div>
                 </div>
@@ -406,21 +423,25 @@ export default function HomePage() {
                 <div className={styles.solutionList}>
                   <div>
                     <FontAwesomeIcon icon={faCheckCircle} />
+
                     <span>Data aset dan inventaris terpusat</span>
                   </div>
 
                   <div>
                     <FontAwesomeIcon icon={faCheckCircle} />
+
                     <span>Pencatatan penugasan dan mutasi</span>
                   </div>
 
                   <div>
                     <FontAwesomeIcon icon={faCheckCircle} />
+
                     <span>Pengelolaan maintenance dan work orders</span>
                   </div>
 
                   <div>
                     <FontAwesomeIcon icon={faCheckCircle} />
+
                     <span>Laporan serta riwayat aktivitas sistem</span>
                   </div>
                 </div>
@@ -453,7 +474,9 @@ export default function HomePage() {
               {steps.map((step) => (
                 <article key={step.number} className={styles.workflowCard}>
                   <span>{step.number}</span>
+
                   <div className={styles.workflowLine} />
+
                   <h3>{step.title}</h3>
                   <p>{step.description}</p>
                 </article>
@@ -538,7 +561,9 @@ export default function HomePage() {
 
             <div className={styles.footerLinks}>
               <h3>Platform</h3>
+
               <a href="#fitur">Kapabilitas</a>
+              <a href="#jelajahi">Eksplorasi</a>
               <a href="#solusi">Solusi</a>
               <a href="#alur-kerja">Alur Kerja</a>
               <a href="#hak-akses">Hak Akses</a>
@@ -546,7 +571,9 @@ export default function HomePage() {
 
             <div className={styles.footerLinks}>
               <h3>Workspace</h3>
+
               <Link href="/login">Login</Link>
+
               <Link href="/dashboard">Dashboard</Link>
             </div>
           </div>
